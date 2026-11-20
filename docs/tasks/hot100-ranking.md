@@ -1,5 +1,7 @@
 # 25. HOT100 — đổi cách xếp hạng trang "Công ty hàng đầu"
 
+**Ticket:** SRM-1711 "Update logic", sub-task của **SRM-1708 [JS] Page Hot100**
+**Hai sub-task anh em, KHÔNG thuộc phạm vi ticket này:** SRM-1709 (tiêu đề trang + URL) · SRM-1710 (Refine UI)
 **Repo:** svn-web + svn-be · **Ưu tiên:** sau go-live 21/11/2026 *(giả định của BA, cần xác nhận)*
 **Requirement:** [saramin-eta.vercel.app/m/job-management/hot100](https://saramin-eta.vercel.app/m/job-management/hot100)
 **Mockup:** [Mockups ▸ js-hot100](https://saramin-eta.vercel.app/mockups)
@@ -250,10 +252,11 @@ Build hiện chỉ có 2 trạng thái: có số liệu hôm qua thì ▲▼, kh
 
 | Chỗ | Hiện tại | Sửa thành |
 |---|---|---|
-| Tiêu đề trang | "Tin tuyển dụng phổ biến HOT100" | "Công ty hàng đầu" |
 | Chú thích dấu "?" | Mô tả bảng dựa trên lượt xem và lượt lưu, tổng hợp 30 phút từ 0 giờ | **Câu chữ mới bên dưới** |
 
-Khoá trong `dictionaries/vi.json`, `en.json`, `ko.json`: `hotTitle`, `hotInfoDescription`.
+Khoá trong `dictionaries/vi.json`, `en.json`, `ko.json`: `hotInfoDescription`.
+
+> **Tiêu đề trang (`hotTitle`) và URL KHÔNG thuộc ticket này** — đó là việc của **SRM-1709**. Đừng sửa `hotTitle` ở đây, hai ticket đụng nhau một khoá là chắc chắn có người ghi đè người kia.
 
 **ĐÃ CHỐT 20/11/2026 — câu chữ mới cho `hotInfoDescription`**, copy thẳng vào dictionaries:
 
@@ -506,8 +509,7 @@ Hệ quả nếu **không gói nào khai nhịp**:
 - [ ] Ngày mà mọi khách đều chỉ thấy 10 dòng, bảng lưu vẫn đủ 100 vị trí, và sáng hôm sau chỉ tin thật sự mới mới hiện "new"
 - [ ] Số 10 đổi được qua cấu hình
 
-**Khác**
-- [ ] Tiêu đề trang hiển thị "Công ty hàng đầu", không còn "Tin tuyển dụng phổ biến HOT100"
+**Khác** *(tiêu đề trang: xem SRM-1709)*
 - [ ] `hotInfoDescription` dùng đúng câu chữ đã chốt ở phần 3.8, cả ba ngôn ngữ
 - [ ] Không ngôn ngữ nào còn câu "thứ hạng dựa trên lượt xem và lượt lưu"
 

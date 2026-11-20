@@ -48,15 +48,24 @@ HQ đánh dấu một số dòng catalogue là **Default** ở Master data (sub-
 
 > **Vì sao chép một lần chứ không phải liên kết sống.** Nếu Default là liên kết sống thì lần sau HQ sửa danh sách, mọi thao tác gỡ tag của sales bị ghi đè, và hàng nghìn công ty bị viết lại từ một màn hình mà không có dấu vết ai yêu cầu. Chép một lần là hướng an toàn và cũng là hướng trung thực duy nhất.
 
-### Công ty đã tồn tại từ trước — cần chốt
+### Công ty đã tồn tại từ trước — CHỐT 20/11/2026: có chạy
 
-Mọi công ty trên hệ thống hôm nay đều có trước cờ Default, nên sẽ **không bao giờ** nhận được tag mặc định. Đề xuất một migration chạy một lần:
+Mọi công ty trên hệ thống hôm nay đều có trước cờ Default, nên sẽ **không bao giờ** nhận được tag mặc định. Chạy một bước chép dữ liệu một lần:
 
 - chép các dòng Default **chỉ vào công ty đang có `company_search_tag` RỖNG**
 - **không ghi đè** gì; công ty đã có tag thì để nguyên
-- xoá đi được nếu kết quả sai
+- tôn trọng giới hạn 12 như lúc tạo công ty mới
+- xoá đi được nếu kết quả sai (xoá đúng các dòng vừa chép)
 
-**Chưa chạy cho tới khi chị Thu chốt.** Code vẫn viết, nhưng để sau một cờ bật/tắt hoặc một lệnh chạy tay.
+> ### ⚠️ KHÔNG gói bước này vào migration của release
+>
+> Migration thêm cột **cố ý không bật Default cho dòng nào** — chọn dòng nào là quyết định của HQ. Nên nếu bước chép nằm chung release, nó sẽ **chạy vào tập rỗng và không làm gì cả** — im lặng, không lỗi, và không ai biết cho tới khi vài tháng sau có người thắc mắc sao không công ty nào có tag mặc định.
+>
+> **Thứ tự bắt buộc:** ship cờ Default → **HQ vào Master data chọn các dòng Default** → *rồi mới* chạy bước chép, như một lệnh riêng chạy khi được yêu cầu.
+
+**Đếm trước, ghi sau.** Lệnh phải có chế độ chỉ đếm: in ra *bao nhiêu công ty sẽ bị tác động* và *bao nhiêu dòng sẽ được ghi*, trước khi ghi bất cứ gì. Chạy thật là một lệnh riêng.
+
+**Một trường hợp bước chép không phân biệt được**, nói trước cho khỏi bất ngờ: công ty bị **gỡ hết tag có chủ ý** trông y hệt công ty **chưa ai điền** — đều là danh sách rỗng, không có cột nào phân biệt — nên cả hai đều được chép tag mặc định vào. Hiếm, chấp nhận được; con số in ra ở bước đếm là chốt chặn để không làm sai hàng loạt.
 
 ## 4. Banner cảnh báo — viết lại
 
@@ -110,6 +119,15 @@ CREATE INDEX idx_company_search_tag_company ON company_search_tag (company_id);
 - [ ] HQ gắn Default cho 15 tag → tạo công ty mới → chỉ **12 dòng đầu theo thứ tự catalogue** được chép.
 - [ ] Không dòng Default nào trùng id với tag Required.
 - [ ] Không gắn Default cho tag nào → tạo công ty mới → `company_search_tag` rỗng, **vẫn lưu được**, banner cảnh báo hiện bình thường.
+
+### Bước chép cho công ty cũ
+
+- [ ] Chế độ đếm in ra đúng số công ty có `company_search_tag` rỗng và số dòng sẽ ghi, **không ghi gì vào DB**.
+- [ ] Chạy thật: công ty rỗng nhận đủ các tag Default; công ty **đã có tag** không đổi một dòng nào.
+- [ ] Công ty rỗng mà danh sách Default có 15 dòng → chỉ nhận **12 dòng đầu**.
+- [ ] Chạy lại lần hai ngay sau đó → **không ghi thêm dòng nào** (các công ty đó giờ đã có tag).
+- [ ] Chạy khi **chưa có dòng Default nào** → in ra 0 dòng sẽ ghi và **dừng**, không báo thành công giả.
+- [ ] Xoá được đúng các dòng vừa chép nếu kết quả sai.
 
 ## 7. Không làm trong sub-task này
 

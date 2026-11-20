@@ -1331,7 +1331,7 @@ export const jobManagement: BuildModule = {
             table: {
               cols: ['Key', 'Today', 'Replace with'],
               rows: [
-                ['`hotTitle`', '“Tin tuyển dụng phổ biến HOT100”', '“Công ty hàng đầu” — the name every link into the page already uses'],
+                ['`hotTitle`', '“Tin tuyển dụng phổ biến HOT100”', 'UNSETTLED — see the warning below. Ships in SRM-1709, not with the ranking work.'],
                 ['`hotInfoDescription`', 'A chart of daily views and saves, “aggregated for 30 minutes from midnight”', 'The three lines below, one per language'],
               ],
             },
@@ -1344,7 +1344,7 @@ export const jobManagement: BuildModule = {
               'THE “30 MINUTES FROM MIDNIGHT” SENTENCE GOES. It described a delay the nightly job does not have — the board is fixed in one run and served unchanged for the rest of the day.',
               'SHORT ON PURPOSE. A longer draft that spelled ▲▼ and “new” out as full sentences was rejected on 20/11/2026 in favour of this one, because the tooltip has to fit on a phone.',
             ],
-            warn: 'DO NOT WRITE “thứ hạng dựa trên lượt xem và lượt lưu”, in any language. That is the exact sentence this rewrite exists to remove: it names two of the three interest signals as THE basis of the ranking, when the ranking is 90% tier. Adding the application count to it changes nothing — it is still a promise the board does not keep, and the first candidate who checks will find a posting with fewer views sitting higher.',
+            warn: 'THE PAGE TITLE IS NOT SETTLED AND IS NOT PART OF THIS WORK. SRM-1709, opened 19/11/2026, asks for the title “HOT 100” in capitals in every language WITH THE URL CHANGED TO MATCH; this requirement has said “Công ty hàng đầu” since the page was specified. One of the two is stale and the BA settles which. Either way the title and the URL ship in SRM-1709 — the ranking ticket must not touch `hotTitle`, because two tickets writing one key means one of them silently loses. A URL change also drags redirects and the SEO work behind it, which is a second reason it does not belong here.\n\nDO NOT WRITE “thứ hạng dựa trên lượt xem và lượt lưu”, in any language. That is the exact sentence this rewrite exists to remove: it names two of the three interest signals as THE basis of the ranking, when the ranking is 90% tier. Adding the application count to it changes nothing — it is still a promise the board does not keep, and the first candidate who checks will find a posting with fewer views sitting higher.',
           },
         ],
         states: [
@@ -1393,7 +1393,6 @@ export const jobManagement: BuildModule = {
           'The stored board still holds 100 positions on a day when every visitor saw ten, and the next morning only genuinely new postings read “new”.',
           'The ten is a configuration field, and raising it shows more rows without a release.',
           'If the nightly job fails, the page still serves yesterday\'s board.',
-          'The page title reads “Công ty hàng đầu”, not “Tin tuyển dụng phổ biến HOT100”.',
           'The “?” tooltip carries the decided copy in all three languages, and nowhere says the ranking is based on views and saves.',
         ],
         openQuestions: [
