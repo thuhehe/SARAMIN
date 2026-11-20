@@ -40,6 +40,14 @@ TOÀN BỘ TIN TRONG HỆ THỐNG
    [D] MŨI TÊN & LƯU LẠI   so với hôm qua → lưu bảng → xử lý lỗi
 ```
 
+> **BA VÍ DỤ CHẠY XUYÊN SUỐT — nếu chỉ đọc một thứ trong ticket này, đọc ba cái đó.** Cùng bốn tin **P, Q, R, S** đi qua cả ba bước, và mỗi con số ở ví dụ sau **đọc thẳng từ ví dụ trước**, không phải số chọn đại:
+>
+> | Ví dụ | Nằm ở | Cho ra |
+> |---|---|---|
+> | **1/3 — hạng theo gói** | cuối bước A | P = 5, R = 12, Q = 13, S = 20 |
+> | **2/3 — hạng theo tương tác** | cuối bước B | S = 1, Q = 2, P = 60,5, R = 60,5 |
+> | **3/3 — trộn hai hạng** | trong bước C | vị trí hiển thị 1, 2, 3, 4 |
+
 ### A — Chọn 101 tin, lập hạng theo gói
 
 | Bước | Quy tắc |
