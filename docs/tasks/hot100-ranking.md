@@ -295,7 +295,7 @@ Ba hướng, cần chủ SEO chọn:
 
 Nếu phải chọn nhanh thì **hướng 1 là hướng duy nhất vừa cho Google thấy đủ nội dung vừa giữ được tường đăng nhập**.
 
-Đây là quyết định có hình phạt đi kèm, không phải chi tiết kỹ thuật — **đừng tự chọn, hỏi lại BA**.
+**ĐÃ CHỐT 19/11/2026: BA đã hỏi khách và khách giao lại cho bên mình quyết — đây là quyết định kỹ thuật.** Người làm ticket này cũng là người làm task SEO, nên chọn một trong ba hướng rồi **báo lại BA biết đã chọn hướng nào**, đừng chọn im lặng.
 
 ### Hệ quả bán hàng
 
@@ -447,11 +447,11 @@ Hệ quả nếu **không gói nào khai nhịp**:
 
 ## 8. Câu hỏi cần BA trả lời trước khi bắt tay
 
-**Đã chốt, không cần hỏi lại:** trọng số và điểm số chuyển thành ô cấu hình trong admin (không có "lộ trình" nào cả) · bộ 1 / 3 / 5 giữ làm mặc định · luật "new chỉ hiện một lần" CÓ áp · giữ nguyên 4 nhóm lọc đang chạy · nhãn Gợi ý gắn theo tương tác chứ không theo gói · **danh sách đã lọc giữ nguyên cách xếp hiện nay** (bậc gói rồi auto-refresh, không dùng điểm, mũi tên "–" toàn bộ) · **HOT100 KHÔNG phải trang chỉ dành cho tin trả phí** — bỏ lọc placement, làm theo requirement (phần 3.1) · **bước A gom 101 tin**, tin Gợi ý được nhấc ra nên bảng đánh số vẫn đủ 100 · **đúng 1 dòng Gợi ý** · **nút lọc kinh nghiệm KHÔNG có trạng thái "tất cả"**.
+**Đã chốt, không cần hỏi lại:** trọng số và điểm số chuyển thành ô cấu hình trong admin (không có "lộ trình" nào cả) · bộ 1 / 3 / 5 giữ làm mặc định · luật "new chỉ hiện một lần" CÓ áp · giữ nguyên 4 nhóm lọc đang chạy · nhãn Gợi ý gắn theo tương tác chứ không theo gói · **danh sách đã lọc giữ nguyên cách xếp hiện nay** (bậc gói rồi auto-refresh, không dùng điểm, mũi tên "–" toàn bộ) · **HOT100 KHÔNG phải trang chỉ dành cho tin trả phí** — bỏ lọc placement, làm theo requirement (phần 3.1) · **bước A gom 101 tin**, tin Gợi ý được nhấc ra nên bảng đánh số vẫn đủ 100 · **đúng 1 dòng Gợi ý** · **nút lọc kinh nghiệm KHÔNG có trạng thái "tất cả"** · **câu hỏi SEO khách giao lại cho bên mình quyết** (phần 3.12).
 
 **Còn lại:**
 
-1. **Bot tìm kiếm nhìn thấy bao nhiêu dòng?** Xem cảnh báo cloaking ở phần 3.12. **BA giao thẳng câu này cho Thương**, vì Thương cũng là người làm task SEO — chọn một trong ba hướng rồi báo lại BA biết đã chọn hướng nào
+1. **Bot tìm kiếm nhìn thấy bao nhiêu dòng?** Xem cảnh báo cloaking ở phần 3.12. **Đây là việc của Thương**, vì Thương cũng là người làm task SEO — chọn một trong ba hướng rồi báo lại BA biết đã chọn hướng nào
 2. Giới hạn 10 dòng làm lệch chính tín hiệu mà bảng này thu được: lưu lượng của nó giờ chỉ chạm tới 10 dòng đầu, nên tin ở 11–100 nhận ít lượt xem hơn **từ trang này** và hôm sau điểm thấp hơn, lại càng không lên nổi. Lượt xem đến từ tìm kiếm và các trang khác làm loãng bớt, nhưng vòng lặp này có thật — cần theo dõi khi có số liệu
 3. **Có nên KHÔNG tính vào điểm những lượt xem đến từ chính trang HOT100 không?** Đây là cách cắt đứt vòng lặp ở câu 2: khi đó điểm chỉ phản ánh quan tâm đến từ tìm kiếm, trang chủ, trang chi tiết và nguồn ngoài, còn bảng không tự nuôi chính nó. Cần gắn nguồn vào sự kiện xem tin nên có thêm việc, và với `w = 0,1` thì vòng lặp cũng yếu — nên đây là câu hỏi, chưa phải quyết định
 4. Câu chữ mới cho chú thích dấu "?" — BA cấp khi nào?
