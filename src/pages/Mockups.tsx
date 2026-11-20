@@ -179,6 +179,19 @@ const BAND_JOBS: BandJob[] = [
   { title: 'Chuyên viên Phân tích tài chính', co: 'Shopee', tag: 'SHP', salary: 'Tới 40 tr', loc: 'Hồ Chí Minh', dl: '20/12' },
 ]
 
+/* Rule 8b — a tag’s cursor carries a fixed offset derived from its id, so the chips
+   do not all open on the same postings. Taken from the id and not from the tag’s
+   slot in the row, because rule 5 rotates those slots on every page load. */
+function bandOffset(tagId: string, n: number): number {
+  if (!n) return 0
+  let h = 2166136261
+  for (const ch of tagId) {
+    h ^= ch.charCodeAt(0)
+    h = Math.imul(h, 16777619)
+  }
+  return (h >>> 0) % n
+}
+
 const bandJobsFor = (tagId: string) =>
   BAND_JOBS.filter((j) => tagId === BAND_REQUIRED || BAND_CO_TAGS[j.co]?.includes(tagId))
 
@@ -240,10 +253,14 @@ function PremiumBand({ onOpen }: { onOpen: () => void }) {
      candidate never sees the unfiltered band beside a filtered one. */
   const [tag, setTag] = useState(BAND_REQUIRED)
   const [page, setPage] = useState(0)
-  /* Ten cards, served as carousel pages of three. On the live page a cursor also
-     steps three along this ring on every page LOAD, so every job reaches the opening
-     three in turn; a static prototype can only show the arrows. */
-  const ring = useMemo(() => bandRing(bandJobsFor(tag)).slice(0, 10), [tag])
+  /* Ten cards, served as carousel pages of three, starting at this tag’s own offset.
+     On the live page the start ALSO advances on every page LOAD (rule 8), so every job
+     reaches the opening three in turn; a static prototype can only show the arrows. */
+  const ring = useMemo(() => {
+    const r = bandRing(bandJobsFor(tag))
+    const off = bandOffset(tag, r.length)
+    return [...r.slice(off), ...r.slice(0, off)].slice(0, 10)
+  }, [tag])
   const pages = Math.max(1, Math.ceil(ring.length / 3))
   const cards = ring.slice(page * 3, page * 3 + 3)
   const step = (d: number) => setPage((prev) => (prev + d + pages) % pages)

@@ -206,9 +206,39 @@ Build hiện chỉ có 2 trạng thái: có số liệu hôm qua thì ▲▼, kh
 | Chỗ | Hiện tại | Sửa thành |
 |---|---|---|
 | Tiêu đề trang | "Tin tuyển dụng phổ biến HOT100" | "Công ty hàng đầu" |
-| Chú thích dấu "?" | Mô tả bảng dựa trên lượt xem và lượt lưu, tổng hợp 30 phút từ 0 giờ | BA sẽ cấp câu chữ mới |
+| Chú thích dấu "?" | Mô tả bảng dựa trên lượt xem và lượt lưu, tổng hợp 30 phút từ 0 giờ | **Câu chữ mới bên dưới** |
 
 Khoá trong `dictionaries/vi.json`, `en.json`, `ko.json`: `hotTitle`, `hotInfoDescription`.
+
+**ĐÃ CHỐT 20/11/2026 — câu chữ mới cho `hotInfoDescription`**, copy thẳng vào dictionaries:
+
+**vi**
+
+```
+Bảng 100 tin tuyển dụng nổi bật, chốt mỗi ngày lúc 0h.
+Thứ hạng có tính đến lượt xem, lượt lưu và lượt ứng tuyển trong 7 ngày gần nhất.
+▲▼ so với hôm qua · "new" là tin lần đầu vào bảng.
+```
+
+**en**
+
+```
+100 standout job postings, fixed once a day at midnight.
+Ranking takes into account views, saves and applications from the past 7 days.
+▲▼ is the change since yesterday · "new" means a first appearance on the chart.
+```
+
+**ko**
+
+```
+매일 자정에 확정되는 주목할 만한 채용공고 100선입니다.
+순위는 최근 7일간의 조회수·스크랩수·지원수를 반영합니다.
+▲▼는 어제 대비 변동이며, "new"는 처음 차트에 진입한 공고입니다.
+```
+
+> **KHÔNG được viết "thứ hạng dựa trên lượt xem và lượt lưu"** ở bất kỳ ngôn ngữ nào. Đó đúng là câu đang sai mà ticket này sinh ra để sửa: nó nói hai trong ba tín hiệu tương tác **là cơ sở** xếp hạng, trong khi xếp hạng 90% theo gói. Thêm lượt ứng tuyển vào câu đó cũng không cứu được — vẫn là lời hứa mà bảng không giữ, và ứng viên đầu tiên đi kiểm sẽ thấy tin ít lượt xem hơn đứng cao hơn.
+>
+> Cụm gánh việc là **"có tính đến"** — đúng sự thật, và không khẳng định đó là những yếu tố duy nhất. Tooltip cố tình **không nhắc tới gói dịch vụ** và **không nhắc giới hạn 10 dòng** (khối mời đăng nhập đã nói rồi).
 
 ### 3.9 THÊM một vị trí "Gợi ý" phía trên dòng số 1
 
@@ -431,7 +461,9 @@ Hệ quả nếu **không gói nào khai nhịp**:
 - [ ] Số 10 đổi được qua cấu hình
 
 **Khác**
-- [ ] Tiêu đề trang và chú thích dấu "?" đã cập nhật
+- [ ] Tiêu đề trang hiển thị "Công ty hàng đầu", không còn "Tin tuyển dụng phổ biến HOT100"
+- [ ] `hotInfoDescription` dùng đúng câu chữ đã chốt ở phần 3.8, cả ba ngôn ngữ
+- [ ] Không ngôn ngữ nào còn câu "thứ hạng dựa trên lượt xem và lượt lưu"
 
 ---
 
@@ -447,14 +479,13 @@ Hệ quả nếu **không gói nào khai nhịp**:
 
 ## 8. Câu hỏi cần BA trả lời trước khi bắt tay
 
-**Đã chốt, không cần hỏi lại:** trọng số và điểm số chuyển thành ô cấu hình trong admin (không có "lộ trình" nào cả) · bộ 1 / 3 / 5 giữ làm mặc định · luật "new chỉ hiện một lần" CÓ áp · giữ nguyên 4 nhóm lọc đang chạy · nhãn Gợi ý gắn theo tương tác chứ không theo gói · **danh sách đã lọc giữ nguyên cách xếp hiện nay** (bậc gói rồi auto-refresh, không dùng điểm, mũi tên "–" toàn bộ) · **HOT100 KHÔNG phải trang chỉ dành cho tin trả phí** — bỏ lọc placement, làm theo requirement (phần 3.1) · **bước A gom 101 tin**, tin Gợi ý được nhấc ra nên bảng đánh số vẫn đủ 100 · **đúng 1 dòng Gợi ý** · **nút lọc kinh nghiệm KHÔNG có trạng thái "tất cả"** · **câu hỏi SEO khách giao lại cho bên mình quyết** (phần 3.12).
+**Đã chốt, không cần hỏi lại:** trọng số và điểm số chuyển thành ô cấu hình trong admin (không có "lộ trình" nào cả) · bộ 1 / 3 / 5 giữ làm mặc định · luật "new chỉ hiện một lần" CÓ áp · giữ nguyên 4 nhóm lọc đang chạy · nhãn Gợi ý gắn theo tương tác chứ không theo gói · **danh sách đã lọc giữ nguyên cách xếp hiện nay** (bậc gói rồi auto-refresh, không dùng điểm, mũi tên "–" toàn bộ) · **HOT100 KHÔNG phải trang chỉ dành cho tin trả phí** — bỏ lọc placement, làm theo requirement (phần 3.1) · **bước A gom 101 tin**, tin Gợi ý được nhấc ra nên bảng đánh số vẫn đủ 100 · **đúng 1 dòng Gợi ý** · **nút lọc kinh nghiệm KHÔNG có trạng thái "tất cả"** · **câu hỏi SEO khách giao lại cho bên mình quyết** (phần 3.12) · **câu chữ mới cho chú thích dấu "?"** đã có, nằm ở phần 3.8.
 
 **Còn lại:**
 
 1. **Bot tìm kiếm nhìn thấy bao nhiêu dòng?** Xem cảnh báo cloaking ở phần 3.12. **Đây là việc của Thương**, vì Thương cũng là người làm task SEO — chọn một trong ba hướng rồi báo lại BA biết đã chọn hướng nào
 2. Giới hạn 10 dòng làm lệch chính tín hiệu mà bảng này thu được: lưu lượng của nó giờ chỉ chạm tới 10 dòng đầu, nên tin ở 11–100 nhận ít lượt xem hơn **từ trang này** và hôm sau điểm thấp hơn, lại càng không lên nổi. Lượt xem đến từ tìm kiếm và các trang khác làm loãng bớt, nhưng vòng lặp này có thật — cần theo dõi khi có số liệu
 3. **Có nên KHÔNG tính vào điểm những lượt xem đến từ chính trang HOT100 không?** Đây là cách cắt đứt vòng lặp ở câu 2: khi đó điểm chỉ phản ánh quan tâm đến từ tìm kiếm, trang chủ, trang chi tiết và nguồn ngoài, còn bảng không tự nuôi chính nó. Cần gắn nguồn vào sự kiện xem tin nên có thêm việc, và với `w = 0,1` thì vòng lặp cũng yếu — nên đây là câu hỏi, chưa phải quyết định
-4. Câu chữ mới cho chú thích dấu "?" — BA cấp khi nào?
 
 ---
 

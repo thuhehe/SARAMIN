@@ -982,7 +982,9 @@ export const jobManagement: BuildModule = {
                 ['**6 · One chip is always selected**', 'The required tag on arrival. There is **no “All” chip and no unselected state** — KR has none, and showing the unfiltered band beside a filtered one is exactly what makes the absence of filtering visible.'],
                 ['**7 · Each tag has its own ring**', 'The jobs that tag covers, laid out once: **each company spread evenly over the WHOLE ring**. A company holding 12 of 33 jobs lands about every third slot; one holding 3 lands about every eleventh. Plain round-robin is WRONG here and was the previous recommendation: it exhausts the small companies first and leaves the biggest employer filling the tail of every band.'],
                 ['**7b · Then repair the ring**', 'Wherever **three neighbours share a company**, lift the middle job out and re-insert it where it clashes least. Verified across 6000 randomly generated band compositions: this reaches the theoretically best achievable spread in every one of them. It is impossible only when a single company holds **more than two thirds** of the band — see rule 9 for that case.'],
-                ['**8 · The cursor**', 'Each ring carries a cursor advancing **3 per page load, plus one extra step whenever it wraps**. The extra step is not a nicety: a ring whose length divides by 3 would otherwise pin every job to the same slot for ever — on the 33-job example all 33 jobs are stuck without it, and 0 with it. Advance by **3**, never by 10: at 10 only three jobs in every ten would ever reach a visible slot.'],
+                ['**8 · The cursor**', 'A **cycle** is `ceil(N ÷ 3)` page loads, where N is the length of that tag’s ring. Inside a cycle the cursor steps **3**; when a cycle ends, the next one **starts one slot later**. In full: `start = (3 × (load mod M) + floor(load ÷ M)) mod N`, with `M = ceil(N ÷ 3)`. That delivers both halves of the promise — every job is in the opening three at least once per cycle, and across successive cycles every job visits slot 1, slot 2 and slot 3 in turn. Advance by **3**, never by 10: at 10 only three jobs in every ten would ever reach a visible slot.'],
+                ['**8a · Why NOT “step 3, plus one on wrap”**', 'CORRECTED 20/11/2026, and kept here because the broken version looks right. Rule 8 first read *advance 3 per load, plus one extra step whenever the cursor wraps*. That holds only when 3 divides N. Audited across every ring length from 3 to 300: whenever **N ≡ 1 (mod 3)** — N = 10, 16, 19, 22, 34 … — the cursor falls into a short orbit, never reaches most start positions, and **every job stays frozen in one slot for ever**, the exact failure this model exists to prevent. It passes on N = 33 and fails on N = 16, so test rule 8 on a ring length that is NOT a multiple of 3.'],
+                ['**8b · Each tag starts somewhere different**', 'DECIDED 20/11/2026. A tag’s cursor carries a fixed offset derived from the tag id — `offset = hash(tagId) mod N` — so the chips do not all open on the same postings. Without it the eight chips in the worked example open on only **16 distinct jobs out of 24**; with it, **18.5**. Because the offset is constant for a tag it costs fairness nothing: every job still reaches the opening three on exactly the schedule rule 8 sets. Derive it from the tag ID and NOT from the tag’s position in the row — rule 5 rotates those positions every load, so an offset moving with them would be reproducible by nobody.'],
                 ['**9 · Drawing the cards**', 'Up to **ten** cards from the cursor, served as carousel pages of 3 + 3 + 3 + 1. **Within any one page of three, a company may hold at most two cards**: when its third would be drawn, skip it and take the next job on the ring instead. Where no alternative exists — a band with a single employer — fill the slot anyway rather than render a gap. This rule is a no-op unless one employer dominates; on the 6-company example it changes nothing at all.'],
                 ['**10 · No counts on the chips**', 'KR shows none, and a count invites the wrong comparison: a chip over four jobs reads as worse than one over forty, when the rotation puts the same three cards on screen for both.'],
               ],
@@ -996,7 +998,7 @@ export const jobManagement: BuildModule = {
               'SWITCHING TAGS TOUCHES NOTHING ELSE. No request, no URL change, no second search-log row, no movement in the result list below. The whole rotation arrives in the first response, so the swap is instant.',
               'ORDER OF DELIVERY: the Search tag flag and the Required flag, then the per-company picks, then svn-be, then svn-web. Spring drops an unknown `@RequestParam` in silence, so a front end ahead of its back end produces no error anywhere — just a row that does nothing.',
             ],
-            warn: 'Open — (1) **THE CHIPS OPEN OVERLAPPING SETS.** Measured on the 33-job example: the eight chips\' opening three cards hold only **16 distinct jobs out of 24**, because every ring is built the same way and every cursor starts at the same place. Offsetting each tag’s cursor by its position in the row raises that to **18.9 / 24** and costs one line; an explicit cross-tag de-duplication pass reaches about **22.8 / 24** but re-introduces the dealing complexity this rewrite just removed. Recommendation: take the offset, and revisit only if the client raises it — under the rotation model overlapping chips cost exposure to nobody. RESOLVED 19/11/2026, both raised by svn-be on SRM-1538 — (a) **anonymous postings** have no company and so hold no company tags, but rule 2 defines the required tag as covering *every job in the band*, not every company, so they ride in its ring and nothing is lost; (b) **how many jobs the band reads** — it reads IDS for the whole qualifying set, which is what the rings rotate over, and hydrates full job data only for the ≤ 80 ids that reach the response. The old 50-job read cap goes; a cap on the ring would silently freeze the jobs beyond it out of the rotation, which is the one thing this model exists to prevent.',
+            warn: 'RESOLVED 20/11/2026 — **the chips used to open overlapping sets**: 16 distinct jobs out of 24 on the worked example, because every ring was built the same way and every cursor started in the same place. Rule 8b fixes it to 18.5 / 24 for one line of code. An explicit cross-tag de-duplication pass would reach about 22.8 / 24 and was rejected — it re-introduces the dealing complexity this rewrite removed, to buy variety that under the rotation model costs no job any exposure. Revisit only if the client raises it. · RESOLVED 19/11/2026, both raised by svn-be on SRM-1538 — (a) **anonymous postings** have no company and so hold no company tags, but rule 2 defines the required tag as covering *every job in the band*, not every company, so they ride in its ring and nothing is lost; (b) **how many jobs the band reads** — it reads IDS for the whole qualifying set, which is what the rings rotate over, and hydrates full job data only for the ≤ 80 ids that reach the response. The old 50-job read cap goes; a cap on the ring would silently freeze the jobs beyond it out of the rotation, which is the one thing this model exists to prevent.',
           },
           {
             label: 'JOB SEARCH — gate → filter → score → band → order → tail, and relevance is ONLY what the candidate typed',
@@ -1107,7 +1109,7 @@ export const jobManagement: BuildModule = {
         ],
         requirements: [
           {
-            label: 'STAGE A — which 100 postings are on the board, and their TIER RANK',
+            label: 'STAGE A — which 101 postings are on the board, and their TIER RANK',
             text: 'Run over every posting in the system, not over a paid subset. Tier is a SORT key here, not a filter: a low-tier posting still reaches the board on a day when few high-tier postings are open.',
             table: {
               cols: ['Step', 'Rule'],
@@ -1128,7 +1130,7 @@ export const jobManagement: BuildModule = {
             warn: 'DECIDED 19/11/2026 — there is NO paid-only gate in this stage. A posting with no package is eligible and simply sorts last. The build filters by placement today, and that is not an argument either way: this page is being rebuilt against this requirement, so what the current code happens to do settles nothing. The sales line is therefore “buy a package to sit HIGHER”, not “buy a package to APPEAR”. In practice the difference is small — with the guest limit at ten, the rows a visitor actually sees are the top of the tier order anyway, so a free posting reaching the board costs almost nothing.',
           },
           {
-            label: 'STAGE B — the INTEREST RANK, over those 100 only',
+            label: 'STAGE B — the INTEREST RANK, over those 101',
             text: 'Score only the 100 postings chosen in Stage A. Scoring the whole corpus would be work with nowhere to land, because Stage A has already settled membership.',
             table: {
               cols: ['Signal', 'Points', 'Counted only when'],
@@ -1278,16 +1280,37 @@ export const jobManagement: BuildModule = {
               ],
             },
             items: [
-              'A FILTERED LIST IS A DIFFERENT RANKING. Most of its rows were never scored, because scoring runs over the 100 of the main board only; and it has no yesterday of its own to compare against. Both facts point the same way, which is why the column empties.',
+              'A FILTERED LIST IS A DIFFERENT RANKING. Most of its rows were never scored, because scoring runs over the 101 the main board is built from; and it has no yesterday of its own to compare against. Both facts point the same way, which is why the column empties.',
               'THE NIGHTLY CADENCE IS NOT A COST SAVING, it is the cadence of the data. The interest score is a 7-day sum, so an hour moves it by well under one percent; recomputing every five minutes would return the same board and spend the work to find that out.',
               'THE PRICE OF THE CADENCE, which sales must be told: a package bought at 09:00 reaches the board at 00:01 the next morning. Today it appears at once.',
             ],
+          },
+          {
+            label: 'PAGE COPY — the title and the “?” tooltip',
+            text: 'Both strings on this page are wrong today, and the tooltip is wrong twice over: it describes neither what the build does now nor what this rule does. New copy DECIDED 20/11/2026. Keys live in svn-web `dictionaries/{vi,en,ko}.json`.',
+            table: {
+              cols: ['Key', 'Today', 'Replace with'],
+              rows: [
+                ['`hotTitle`', '“Tin tuyển dụng phổ biến HOT100”', '“Công ty hàng đầu” — the name every link into the page already uses'],
+                ['`hotInfoDescription`', 'A chart of daily views and saves, “aggregated for 30 minutes from midnight”', 'The three lines below, one per language'],
+              ],
+            },
+            items: [
+              'VI — “Bảng 100 tin tuyển dụng nổi bật, chốt mỗi ngày lúc 0h. / Thứ hạng có tính đến lượt xem, lượt lưu và lượt ứng tuyển trong 7 ngày gần nhất. / ▲▼ so với hôm qua · “new” là tin lần đầu vào bảng.”',
+              'EN — “100 standout job postings, fixed once a day at midnight. / Ranking takes into account views, saves and applications from the past 7 days. / ▲▼ is the change since yesterday · “new” means a first appearance on the chart.”',
+              'KO — “매일 자정에 확정되는 주목할 만한 채용공고 100선입니다. / 순위는 최근 7일간의 조회수·스크랩수·지원수를 반영합니다. / ▲▼는 어제 대비 변동이며, “new”는 처음 차트에 진입한 공고입니다.”',
+              'THE PHRASE THAT DOES THE WORK is “có tính đến” / “takes into account” / “반영합니다”. It is true — those three signals ARE counted — and it never claims they are the only ones. The old copy did claim that, which is what makes it a lie against a board that is 90% tier.',
+              'WHAT THE COPY DELIBERATELY LEAVES OUT: the package tier, and the guest limit. Tier is commercial and belongs in the sales conversation, not in a tooltip written for candidates; the guest limit already explains itself in the sign-in block under row ten.',
+              'THE “30 MINUTES FROM MIDNIGHT” SENTENCE GOES. It described a delay the nightly job does not have — the board is fixed in one run and served unchanged for the rest of the day.',
+              'SHORT ON PURPOSE. A longer draft that spelled ▲▼ and “new” out as full sentences was rejected on 20/11/2026 in favour of this one, because the tooltip has to fit on a phone.',
+            ],
+            warn: 'DO NOT WRITE “thứ hạng dựa trên lượt xem và lượt lưu”, in any language. That is the exact sentence this rewrite exists to remove: it names two of the three interest signals as THE basis of the ranking, when the ranking is 90% tier. Adding the application count to it changes nothing — it is still a promise the board does not keep, and the first candidate who checks will find a posting with fewer views sitting higher.',
           },
         ],
         states: [
           'First night — no stored board exists: every row shows "–", never "new".',
           'Nightly job failed or did not run: yesterday\'s board is served unchanged, with an alert raised. Never an empty page.',
-          'Fewer than 100 eligible postings: render the rows there are; do not pad.',
+          'Fewer than 101 eligible postings: render the rows there are; do not pad — the recommended row still comes out of that set, so the numbered board is one row shorter.',
           'Every posting on the board scoring zero: all 100 share one interest rank, so the board is exactly the tier order. This is the expected state for the first weeks.',
           'All 100 postings on one tier: the tier rank is settled by last refresh and the blend behaves normally.',
           'A posting closes or expires during the day: it stays on the board until the next run, shown in its closed state as the card already does.',
@@ -1329,14 +1352,14 @@ export const jobManagement: BuildModule = {
           'The stored board still holds 100 positions on a day when every visitor saw ten, and the next morning only genuinely new postings read “new”.',
           'The ten is a configuration field, and raising it shows more rows without a release.',
           'If the nightly job fails, the page still serves yesterday\'s board.',
-          'Page title and the "?" tooltip match this rule.',
+          'The page title reads “Công ty hàng đầu”, not “Tin tuyển dụng phổ biến HOT100”.',
+          'The “?” tooltip carries the decided copy in all three languages, and nowhere says the ranking is based on views and saves.',
         ],
         openQuestions: [
           'ROUTED 19/11/2026 TO THE DEVELOPER ON THIS TASK, who also owns SEO — the client was asked and handed it back as a technical call. How should a search engine see this board? Showing a crawler all hundred rows while a visitor sees ten is cloaking and carries a Google penalty; showing it ten means ninety paid postings are never indexed. The third way is Google’s paywalled-content structured data, which is the official exception to the cloaking rule rather than a way around it — and the only one of the three that both shows a crawler the full board and keeps the sign-in wall meaning anything, since shipping all hundred rows in the HTML leaves them readable in view-source. Whoever owns SEO should pick, because the failure mode of guessing is silent and surfaces months later.',
           'A way to cut that loop if it proves real: do not count a view that ARRIVED FROM this board. The score would then carry interest from search, the homepage, job details and outside links, and the board would stop feeding itself. It needs the source recorded on the view event, which is work nobody has costed; at w = 0.1 the loop is weak, so this is a question rather than a decision.',
           'The guest limit biases the interest signal this board collects: its own traffic now reaches only its top ten, so postings at 11–100 gather fewer views FROM THIS PAGE and score lower tomorrow, which keeps them below ten. Views arriving from search and from other lists dilute it, but the loop is real and worth watching once there is data.',
           'Position ten is now a commercial boundary. With w = 0.1 a posting ranked fifteenth by tier can enter the visible ten on interest, and one ranked eighth can fall out of it. Sales needs to know this before the first package is sold against it.',
-          'New copy for the "?" tooltip — it currently describes a daily views-and-saves chart aggregated for 30 minutes from midnight, which is neither what the build does today nor what this rule does.',
         ],
       },
     },
