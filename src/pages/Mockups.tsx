@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Browser, JsHeader, JobCard, Btn, Chip, SectionTitle, NavContext, useNav } from '@/components/wire'
 import { BenefitCards } from '@/components/BenefitsField'
 import { SaraminCvDoc, CvComposer, CvRichText, normalizeCvText, type CvData } from '@/components/CvDoc'
@@ -130,7 +130,13 @@ function HomeScreen() {
    no employer fills the row. One chip is always selected (there is no "All") and
    no chip shows a count, as on the Korean reference.
    See Job management → Job list (Search result) → "THE BLUE ZONE'S TAG ROW". */
+const BAND_REQUIRED = 'featured'
+
+/* Slot 1 is always the required tag — every company holds it, so it covers the whole
+   band and is what guarantees no paying advertiser is left off a chip. The rest
+   rotate; six are shown here, the real row shows up to eight. */
 const BAND_TAGS: { id: string; label: string }[] = [
+  { id: BAND_REQUIRED, label: '✨ Việc làm nổi bật' },
   { id: 'bonus13', label: '💰 Lương tháng 13' },
   { id: 'remote', label: '💻 Làm việc từ xa' },
   { id: 'snacks', label: '☕ Đồ ăn nhẹ miễn phí' },
@@ -139,55 +145,108 @@ const BAND_TAGS: { id: string; label: string }[] = [
   { id: 'lunch', label: '🍱 Phụ cấp ăn trưa' },
 ]
 
-/* What the deal looks like from the FE's side: a list of jobs per chip, already
-   decided by svn-be. Two things are visible at once — the chip FILTERS (its three
-   cards come from the employers holding that tag) and the deal DISTRIBUTES (no job
-   repeats between chips, and two neighbouring cards are never the same employer). */
-const BAND_DEAL: Record<string, { title: string; co: string; tag: string; salary: string; loc: string; dl: string }[]> = {
-  bonus13: [
-    { title: 'Chuyên viên Kế toán tổng hợp', co: 'MB Bank', tag: 'MB', salary: '15 – 22 tr', loc: 'Hồ Chí Minh', dl: '30/11' },
-    { title: 'Kế toán thuế', co: 'NIPPA', tag: 'NIP', salary: '12 – 18 tr', loc: 'Bình Dương', dl: '12/12' },
-    { title: 'Kế toán chi phí sản xuất', co: 'Vinamilk', tag: 'VNM', salary: '18 – 25 tr', loc: 'Bình Dương', dl: '20/12' },
-  ],
-  remote: [
-    { title: 'Kế toán dự án phần mềm', co: 'FPT Software', tag: 'FPT', salary: '20 – 30 tr', loc: 'Hà Nội', dl: '05/12' },
-    { title: 'Chuyên viên Kế toán đầu tư', co: 'MB Bank', tag: 'MB', salary: 'Tới 40 tr', loc: 'Hà Nội', dl: '08/12' },
-    { title: 'Trợ lý Kế toán', co: 'Khan Academy', tag: 'KHAN', salary: '10 – 15 tr', loc: 'Hồ Chí Minh', dl: '28/12' },
-  ],
-  snacks: [
-    { title: 'Kế toán thương mại điện tử', co: 'Shopee', tag: 'SHP', salary: '22 – 30 tr', loc: 'Hồ Chí Minh', dl: '15/12' },
-    { title: 'Chuyên viên Kế toán quản trị', co: 'MB Bank', tag: 'MB', salary: '20 – 28 tr', loc: 'Hà Nội', dl: '28/12' },
-    { title: 'Kế toán tổng hợp', co: 'Khan Academy', tag: 'KHAN', salary: 'Thỏa thuận', loc: 'Hồ Chí Minh', dl: '30/11' },
-  ],
-  flex: [
-    { title: 'Chuyên viên Kiểm toán nội bộ', co: 'MB Bank', tag: 'MB', salary: '25 – 35 tr', loc: 'Hà Nội', dl: '12/12' },
-    { title: 'Chuyên viên Phân tích tài chính', co: 'Shopee', tag: 'SHP', salary: 'Tới 40 tr', loc: 'Hồ Chí Minh', dl: '20/12' },
-    { title: 'Kế toán thuế quốc tế', co: 'FPT Software', tag: 'FPT', salary: '25 – 35 tr', loc: 'Đà Nẵng', dl: '08/12' },
-  ],
-  housing: [
-    { title: 'Kế toán trưởng Nhà máy Bình Dương', co: 'Vinamilk', tag: 'VNM', salary: '30 – 45 tr', loc: 'Bình Dương', dl: '28/12' },
-    { title: 'Kế toán viên Ngân quỹ', co: 'MB Bank', tag: 'MB', salary: '12 – 18 tr', loc: 'Hồ Chí Minh', dl: '15/12' },
-    { title: 'Kế toán kho vận', co: 'Vinamilk', tag: 'VNM', salary: '15 – 20 tr', loc: 'Đà Nẵng', dl: '12/12' },
-  ],
-  lunch: [
-    { title: 'Nhân viên Kế toán kho', co: 'NIPPA', tag: 'NIP', salary: '10 – 15 tr', loc: 'Bình Dương', dl: '05/12' },
-    { title: 'Kế toán công nợ', co: 'Vinamilk', tag: 'VNM', salary: '15 – 22 tr', loc: 'Hồ Chí Minh', dl: '20/12' },
-    { title: 'Kế toán thanh toán', co: 'NIPPA', tag: 'NIP', salary: '12 – 18 tr', loc: 'Hà Nội', dl: '30/11' },
-  ],
+/* A tag belongs to the COMPANY, never to the posting — so a chip opens the employers
+   holding it, and every job of those employers is in its ring. */
+const BAND_CO_TAGS: Record<string, string[]> = {
+  'MB Bank': ['bonus13', 'remote', 'snacks', 'flex', 'housing'],
+  NIPPA: ['bonus13', 'lunch'],
+  Vinamilk: ['bonus13', 'housing', 'lunch'],
+  'FPT Software': ['remote', 'flex'],
+  'Khan Academy': ['remote', 'snacks'],
+  Shopee: ['snacks', 'flex'],
 }
 
-function BandArrow({ children }: { children: React.ReactNode }) {
+type BandJob = { title: string; co: string; tag: string; salary: string; loc: string; dl: string }
+
+const BAND_JOBS: BandJob[] = [
+  { title: 'Chuyên viên Kế toán tổng hợp', co: 'MB Bank', tag: 'MB', salary: '15 – 22 tr', loc: 'Hồ Chí Minh', dl: '30/11' },
+  { title: 'Chuyên viên Kế toán đầu tư', co: 'MB Bank', tag: 'MB', salary: 'Tới 40 tr', loc: 'Hà Nội', dl: '08/12' },
+  { title: 'Chuyên viên Kế toán quản trị', co: 'MB Bank', tag: 'MB', salary: '20 – 28 tr', loc: 'Hà Nội', dl: '28/12' },
+  { title: 'Chuyên viên Kiểm toán nội bộ', co: 'MB Bank', tag: 'MB', salary: '25 – 35 tr', loc: 'Hà Nội', dl: '12/12' },
+  { title: 'Kế toán viên Ngân quỹ', co: 'MB Bank', tag: 'MB', salary: '12 – 18 tr', loc: 'Hồ Chí Minh', dl: '15/12' },
+  { title: 'Kế toán thuế', co: 'NIPPA', tag: 'NIP', salary: '12 – 18 tr', loc: 'Bình Dương', dl: '12/12' },
+  { title: 'Nhân viên Kế toán kho', co: 'NIPPA', tag: 'NIP', salary: '10 – 15 tr', loc: 'Bình Dương', dl: '05/12' },
+  { title: 'Kế toán thanh toán', co: 'NIPPA', tag: 'NIP', salary: '12 – 18 tr', loc: 'Hà Nội', dl: '30/11' },
+  { title: 'Kế toán chi phí sản xuất', co: 'Vinamilk', tag: 'VNM', salary: '18 – 25 tr', loc: 'Bình Dương', dl: '20/12' },
+  { title: 'Kế toán trưởng Nhà máy Bình Dương', co: 'Vinamilk', tag: 'VNM', salary: '30 – 45 tr', loc: 'Bình Dương', dl: '28/12' },
+  { title: 'Kế toán kho vận', co: 'Vinamilk', tag: 'VNM', salary: '15 – 20 tr', loc: 'Đà Nẵng', dl: '12/12' },
+  { title: 'Kế toán công nợ', co: 'Vinamilk', tag: 'VNM', salary: '15 – 22 tr', loc: 'Hồ Chí Minh', dl: '20/12' },
+  { title: 'Kế toán dự án phần mềm', co: 'FPT Software', tag: 'FPT', salary: '20 – 30 tr', loc: 'Hà Nội', dl: '05/12' },
+  { title: 'Kế toán thuế quốc tế', co: 'FPT Software', tag: 'FPT', salary: '25 – 35 tr', loc: 'Đà Nẵng', dl: '08/12' },
+  { title: 'Trợ lý Kế toán', co: 'Khan Academy', tag: 'KHAN', salary: '10 – 15 tr', loc: 'Hồ Chí Minh', dl: '28/12' },
+  { title: 'Kế toán tổng hợp', co: 'Khan Academy', tag: 'KHAN', salary: 'Thỏa thuận', loc: 'Hồ Chí Minh', dl: '30/11' },
+  { title: 'Kế toán thương mại điện tử', co: 'Shopee', tag: 'SHP', salary: '22 – 30 tr', loc: 'Hồ Chí Minh', dl: '15/12' },
+  { title: 'Chuyên viên Phân tích tài chính', co: 'Shopee', tag: 'SHP', salary: 'Tới 40 tr', loc: 'Hồ Chí Minh', dl: '20/12' },
+]
+
+const bandJobsFor = (tagId: string) =>
+  BAND_JOBS.filter((j) => tagId === BAND_REQUIRED || BAND_CO_TAGS[j.co]?.includes(tagId))
+
+/* Rule 7 — each company spread evenly over the WHOLE ring. Plain round-robin is
+   wrong here: it exhausts the small employers first and leaves the biggest one
+   filling the tail. Rule 7b then lifts the middle job out of any place where three
+   neighbours share a company and re-inserts it where it clashes least. */
+function bandRing(jobs: BandJob[]): BandJob[] {
+  const cos = [...new Set(jobs.map((j) => j.co))]
+  const slots = cos.flatMap((co, ci) => {
+    const g = jobs.filter((j) => j.co === co)
+    return g.map((j, k) => ({ j, ci, pos: ((k + 0.5) * jobs.length) / g.length }))
+  })
+  slots.sort((a, b) => a.pos - b.pos || a.ci - b.ci)
+  let ring = slots.map((s) => s.j)
+  const clash = (a: BandJob[], i: number) =>
+    a[i].co === a[(i + 1) % a.length].co && a[i].co === a[(i + 2) % a.length].co
+  const score = (a: BandJob[]) => a.reduce((n, _, i) => (clash(a, i) ? n + 1 : n), 0)
+  let best = score(ring)
+  for (let pass = 0; pass < 40 && best > 0; pass++) {
+    let moved = false
+    for (let i = 0; i < ring.length && !moved; i++) {
+      if (!clash(ring, i)) continue
+      const m = (i + 1) % ring.length
+      for (let k = 0; k < ring.length; k++) {
+        if (k === m) continue
+        const t = ring.slice()
+        const [x] = t.splice(m, 1)
+        t.splice(k, 0, x)
+        if (score(t) < best) {
+          ring = t
+          best = score(t)
+          moved = true
+          break
+        }
+      }
+    }
+    if (!moved) break
+  }
+  return ring
+}
+
+function BandArrow({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   return (
-    <span className="grid h-6 w-6 shrink-0 place-items-center self-center rounded-full border border-brand/25 bg-surface text-[11px] leading-none text-muted">
+    <span
+      onClick={onClick}
+      className={cn(
+        'grid h-6 w-6 shrink-0 place-items-center self-center rounded-full border border-brand/25 bg-surface text-[11px] leading-none text-muted',
+        onClick && 'cursor-pointer hover:border-brand hover:text-brand',
+      )}
+    >
       {children}
     </span>
   )
 }
 
 function PremiumBand({ onOpen }: { onOpen: () => void }) {
-  /* The first chip is selected on arrival and there is no unselected state — the
+  /* The required tag is selected on arrival and there is no unselected state — the
      candidate never sees the unfiltered band beside a filtered one. */
-  const [tag, setTag] = useState(BAND_TAGS[0].id)
+  const [tag, setTag] = useState(BAND_REQUIRED)
+  const [page, setPage] = useState(0)
+  /* Ten cards, served as carousel pages of three. On the live page a cursor also
+     steps three along this ring on every page LOAD, so every job reaches the opening
+     three in turn; a static prototype can only show the arrows. */
+  const ring = useMemo(() => bandRing(bandJobsFor(tag)).slice(0, 10), [tag])
+  const pages = Math.max(1, Math.ceil(ring.length / 3))
+  const cards = ring.slice(page * 3, page * 3 + 3)
+  const step = (d: number) => setPage((prev) => (prev + d + pages) % pages)
   return (
     <section className="my-3 rounded-xl border border-brand/20 bg-brand/[0.045] p-3.5">
       <div className="mb-2.5 flex flex-wrap items-baseline gap-2.5">
@@ -201,7 +260,10 @@ function PremiumBand({ onOpen }: { onOpen: () => void }) {
           {BAND_TAGS.map((t) => (
             <span
               key={t.id}
-              onClick={() => setTag(t.id)}
+              onClick={() => {
+                setTag(t.id)
+                setPage(0)
+              }}
               className={cn(
                 'shrink-0 cursor-pointer select-none whitespace-nowrap rounded-full border bg-surface px-3.5 py-1.5 text-[12px]',
                 t.id === tag ? 'border-brand font-bold text-brand' : 'border-transparent text-muted hover:border-brand/30',
@@ -214,9 +276,9 @@ function PremiumBand({ onOpen }: { onOpen: () => void }) {
         <BandArrow>›</BandArrow>
       </div>
       <div className="flex items-stretch gap-2">
-        <BandArrow>‹</BandArrow>
+        <BandArrow onClick={() => step(-1)}>‹</BandArrow>
         <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-3">
-          {BAND_DEAL[tag].map((j) => (
+          {cards.map((j) => (
             <div
               key={j.title}
               onClick={onOpen}
@@ -240,10 +302,12 @@ function PremiumBand({ onOpen }: { onOpen: () => void }) {
             </div>
           ))}
         </div>
-        <BandArrow>›</BandArrow>
+        <BandArrow onClick={() => step(1)}>›</BandArrow>
       </div>
       {/* No count on any chip, and the pager says tin — not "results". */}
-      <p className="mt-2 text-center text-[10.5px] text-muted">1 / 4 · 10 tin</p>
+      <p className="mt-2 text-center text-[10.5px] text-muted">
+        {page + 1} / {pages} · {ring.length} tin
+      </p>
     </section>
   )
 }
