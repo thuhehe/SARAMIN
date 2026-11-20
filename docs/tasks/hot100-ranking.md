@@ -517,6 +517,7 @@ Hệ quả nếu **không gói nào khai nhịp**:
 - [ ] 6 ô cấu hình đổi được, không cần phát hành lại
 - [ ] Đổi số có hiệu lực từ lần chạy 0h kế tiếp, và màn hình ghi rõ điều đó
 - [ ] Đặt `w = 0` thì bảng ra đúng thứ tự như production hiện nay
+- [ ] Biên độ khớp bảng ở phần 3.11: đặt `w = 0,2` thì tin dịch tối đa ~25 bậc, không phải ~20
 
 **Kiểm thử dữ liệu quá khứ**
 - [ ] Có lệnh dựng lại bảng cho một ngày trong quá khứ
@@ -547,7 +548,7 @@ Hệ quả nếu **không gói nào khai nhịp**:
 
 ## 8. Câu hỏi cần BA trả lời trước khi bắt tay
 
-**Đã chốt, không cần hỏi lại:** trọng số và điểm số chuyển thành ô cấu hình trong admin (không có "lộ trình" nào cả) · bộ 1 / 3 / 5 giữ làm mặc định · luật "new chỉ hiện một lần" CÓ áp · giữ nguyên 4 nhóm lọc đang chạy · nhãn Gợi ý gắn theo tương tác chứ không theo gói · **danh sách đã lọc giữ nguyên cách xếp hiện nay** (bậc gói rồi auto-refresh, không dùng điểm, mũi tên "–" toàn bộ) · **HOT100 KHÔNG phải trang chỉ dành cho tin trả phí** — bỏ lọc placement, làm theo requirement (phần 3.1) · **bước A gom 101 tin**, tin Gợi ý được nhấc ra nên bảng đánh số vẫn đủ 100 · **đúng 1 dòng Gợi ý** · **nút lọc kinh nghiệm KHÔNG có trạng thái "tất cả"** · **câu hỏi SEO khách giao lại cho bên mình quyết** (phần 3.12) · **câu chữ mới cho chú thích dấu "?"** đã có, nằm ở phần 3.8.
+**Đã chốt, không cần hỏi lại:** trọng số và điểm số chuyển thành ô cấu hình trong admin (không có "lộ trình" nào cả) · bộ 1 / 3 / 5 giữ làm mặc định · luật "new chỉ hiện một lần" CÓ áp · giữ nguyên 4 nhóm lọc đang chạy · nhãn Gợi ý gắn theo tương tác chứ không theo gói · **danh sách đã lọc giữ nguyên cách xếp hiện nay** (bậc gói rồi auto-refresh, không dùng điểm, mũi tên "–" toàn bộ) · **HOT100 KHÔNG phải trang chỉ dành cho tin trả phí** — bỏ lọc placement, làm theo requirement (phần 3.1) · **bước A gom 101 tin**, tin Gợi ý được nhấc ra nên bảng đánh số vẫn đủ 100 · **đúng 1 dòng Gợi ý** · **nút lọc kinh nghiệm KHÔNG có trạng thái "tất cả"** · **câu hỏi SEO khách giao lại cho bên mình quyết** (phần 3.12) · **câu chữ mới cho chú thích dấu "?"** đã có, nằm ở phần 3.8 · **giữ hai bước và giữ `w = 0,1`** — chấm điểm một lượt trên toàn bộ tin, và `w = 1`, đều đã cân nhắc và bác ngày 20/11.
 
 **Còn lại:**
 
