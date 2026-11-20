@@ -28,7 +28,8 @@ Tác vụ chạy **00:01 giờ Việt Nam mỗi ngày**. Bảng cố định su�
 ```
 TOÀN BỘ TIN TRONG HỆ THỐNG
         │
-   [A] CHỌN 100 TIN        A1 lọc → A2 sắp theo gói → A3 giới hạn công ty → A4 bù cho đủ
+   [A] CHỌN 101 TIN        A1 lọc → A2 sắp theo gói → A3 giới hạn công ty → A4 bù cho đủ
+        │                  A5 nhấc tin Gợi ý ra, còn 100 tin đánh số
         │                  thứ tự sau bước này = HẠNG THEO GÓI
    [B] XẾP THEO TƯƠNG TÁC  B1 điểm thô → B2 xếp hạng, xử lý bằng điểm
         │                  thứ tự sau bước này = HẠNG THEO TƯƠNG TÁC
@@ -176,7 +177,7 @@ Hệ quả: một công ty có thể chiếm nhiều vị trí liền kề, tố
 
 ### 3.5 Thêm phần tính điểm và xếp hạng theo tương tác
 
-Logic mới hoàn toàn (bước B). Chạy trong tác vụ 00:01, chỉ cho 100 tin đã chọn. **Bắt buộc xử lý đúng trường hợp bằng điểm.**
+Logic mới hoàn toàn (bước B). Chạy trong tác vụ 00:01: **tính điểm cho cả 101 tin** gom ở bước A, rồi **xếp hạng 100 tin còn lại** sau khi A5 nhấc tin Gợi ý ra. **Bắt buộc xử lý đúng trường hợp bằng điểm.**
 
 ### 3.6 Nhãn "new" và mốc "đã từng lên bảng"
 
@@ -438,7 +439,7 @@ Hệ quả nếu **không gói nào khai nhịp**:
 
 - Bộ lọc 4 nhóm trên trang — giữ nguyên hoàn toàn
 - Nội dung thẻ tin, màn hình rỗng — giữ nguyên
-- Nhãn "Gợi ý" cho tin gói cao — chờ khách chốt
+- Nhãn "Gợi ý" gắn theo gói — **đã loại**, khách chốt gắn theo tương tác (phần 3.9)
 - Nhãn "TOP100 theo ngành nghề" như Saramin KR — không làm đợt này
 - `/viec-lam/theo-khu-vuc`, `/viec-lam/theo-nganh-nghe` và các dải tin khác — không đụng
 
