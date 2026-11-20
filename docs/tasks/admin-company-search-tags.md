@@ -4,7 +4,9 @@
 **Requirement:** [saramin-eta.vercel.app → CRM → Companies](https://saramin-eta.vercel.app/m/crm/companies#company-page-tab-highlights-splits-in-two-one-set-for-the-company-page-one-for-job-search)
 **Mockup bấm được:** https://claude.ai/artifact/Czeaekg1FjX1PKmnV6szc4 — **màn 2 · Company page tab**
 
-> **CẬP NHẬT 19/11/2026.** Hai thay đổi so với bản trước: tag Required hiện trong mục này nhưng **không sửa được**, và **chuỗi dự phòng bằng Highlights đã bị bỏ hẳn** — kéo theo nội dung banner cảnh báo phải viết lại.
+> **CẬP NHẬT 19/11/2026.** Tag Required hiện trong mục này nhưng **không sửa được**, và **chuỗi dự phòng bằng Highlights đã bị bỏ hẳn** — kéo theo nội dung banner cảnh báo phải viết lại.
+>
+> **CẬP NHẬT 20/11/2026.** Thêm mục 3: **công ty tạo mới nhận sẵn các tag Default**. Và trần số tag hiện trên dải đổi từ 8 → **10**.
 
 ---
 
@@ -20,7 +22,7 @@ Section 3 của tab Company page trước nay giữ một bộ chip: tối đa 6
 | Hiện ở | trang công ty công khai | hàng tag trong dải Premium trên `/search` |
 
 - **Hai bộ độc lập.** Cùng một chip được phép nằm ở cả hai; bỏ ở bên này không đụng bên kia. Lưu riêng, và dải chip trên trang công ty **không đổi gì cả**.
-- **Mười hai, không phải sáu.** Hàng tag lấy từ hợp các tag của mọi công ty trong dải và chỉ hiện tối đa 8 — nên 12 không phải 12 chip trên màn, mà là **12 cơ hội lọt vào 8 ô**. Công ty chọn 6 thì vào vòng quay bằng nửa công ty chọn 12. Đó là động lực đúng.
+- **Mười hai, không phải sáu.** Hàng tag lấy từ hợp các tag của mọi công ty trong dải và chỉ hiện tối đa 10 — nên 12 không phải 12 chip trên màn, mà là **12 cơ hội lọt vào 10 ô**. Công ty chọn 6 thì vào vòng quay bằng nửa công ty chọn 12. Đó là động lực đúng.
 - **Dùng lại đúng dialog chọn chip của 3a** — bảng tìm kiếm được, có nhóm / mức ưu tiên / tiêu chí mỗi dòng. Chỉ khác danh sách nguồn và giới hạn. Mở từ 3b thì ghi rõ trên header, không thì danh sách ngắn hơn sẽ bị đọc như lỗi.
 
 ## 2. Tag Required — hiện, nhưng không sửa được
@@ -32,7 +34,31 @@ Section 3 của tab Company page trước nay giữ một bộ chip: tối đa 6
 
 > Phải hiện nó, dù không sửa được. Người nhập liệu cần thấy công ty **đã** với tới được tag mở đầu của dải mà không phải làm gì — nếu không thì 12 ô bên dưới trông như bắt buộc, trong khi chúng là tuỳ chọn.
 
-## 3. Banner cảnh báo — viết lại
+## 3. Công ty tạo mới nhận sẵn các tag Default
+
+HQ đánh dấu một số dòng catalogue là **Default** ở Master data (sub-task 2, SRM-1718). Khi một công ty được **tạo mới**, chép toàn bộ các dòng đó vào `company_search_tag` của công ty đó.
+
+| | |
+|---|---|
+| Chép lúc nào | **đúng lúc tạo record công ty**, trong cùng transaction |
+| Chép xong là gì | **tag bình thường** — sales gỡ được, tính vào giới hạn 12 |
+| Vượt 12 dòng Default | chép **12 dòng đầu** theo thứ tự catalogue, bỏ phần dư. Master data đã cảnh báo HQ chuyện này rồi |
+| HQ sửa danh sách Default sau đó | **không đụng** công ty đã tồn tại |
+| Tag Required | **KHÔNG** nằm trong đây — nó không lưu per-company |
+
+> **Vì sao chép một lần chứ không phải liên kết sống.** Nếu Default là liên kết sống thì lần sau HQ sửa danh sách, mọi thao tác gỡ tag của sales bị ghi đè, và hàng nghìn công ty bị viết lại từ một màn hình mà không có dấu vết ai yêu cầu. Chép một lần là hướng an toàn và cũng là hướng trung thực duy nhất.
+
+### Công ty đã tồn tại từ trước — cần chốt
+
+Mọi công ty trên hệ thống hôm nay đều có trước cờ Default, nên sẽ **không bao giờ** nhận được tag mặc định. Đề xuất một migration chạy một lần:
+
+- chép các dòng Default **chỉ vào công ty đang có `company_search_tag` RỖNG**
+- **không ghi đè** gì; công ty đã có tag thì để nguyên
+- xoá đi được nếu kết quả sai
+
+**Chưa chạy cho tới khi chị Thu chốt.** Code vẫn viết, nhưng để sau một cờ bật/tắt hoặc một lệnh chạy tay.
+
+## 4. Banner cảnh báo — viết lại
 
 Bản cũ ghi: công ty mua placement mà chưa chọn Search tag thì hệ thống mượn tạm Highlights của trang công ty, không có nữa thì tin không thuộc tag nào. **Bỏ hết.** Tag Required khiến chuyện đó không xảy ra được.
 
@@ -44,7 +70,7 @@ Banner vẫn còn, nhưng nói điều nhẹ hơn và đúng hơn:
 - Điều kiện hiện banner: **"công ty này đang có sản phẩm còn hiệu lực phủ placement của dải Premium"** — theo placement, không theo tên gói.
 - "Search tags" vẫn nằm trong checklist Ready-to-publish, **không gắn sao**, vì không nhìn thấy nghĩa là chưa điền.
 
-## 4. svn-be
+## 5. svn-be
 
 ```
 CREATE TABLE company_search_tag (
@@ -62,7 +88,7 @@ CREATE INDEX idx_company_search_tag_company ON company_search_tag (company_id);
 - **Server từ chối ghi tag đang Required vào bảng này** → `400`. Nó không thuộc về đây.
 - Gỡ cờ Search tag của một chip (sub-task 1) đã xoá nó khỏi mọi công ty trong cùng transaction — hành vi đó giữ nguyên.
 
-## 5. Acceptance
+## 6. Acceptance
 
 - [ ] Mục 3b chỉ liệt kê chip đã gắn cờ Search tag; chip chưa gắn không xuất hiện trong dialog.
 - [ ] Chọn tới 12 tag được; tag thứ 13 bị chặn ở UI **và** `PUT` 13 dòng bị server trả `400`.
@@ -76,8 +102,17 @@ CREATE INDEX idx_company_search_tag_company ON company_search_tag (company_id);
 - [ ] Công ty không có sản phẩm phủ placement → không hiện banner.
 - [ ] Dải chip trên trang công ty công khai không đổi.
 
-## 6. Không làm trong sub-task này
+### Tag Default
 
-- ❌ Cột Search tag / Required trong Master data — sub-task 1 và 2.
+- [ ] HQ gắn Default cho 5 tag → tạo công ty mới → công ty đó có **đúng 5 dòng** trong `company_search_tag`, đúng 5 tag đó.
+- [ ] Sales gỡ 2 trong 5 tag đó → lưu được, còn 3 dòng.
+- [ ] HQ **đổi** danh sách Default sau đó → công ty vừa tạo ở trên **không đổi một dòng nào**.
+- [ ] HQ gắn Default cho 15 tag → tạo công ty mới → chỉ **12 dòng đầu theo thứ tự catalogue** được chép.
+- [ ] Không dòng Default nào trùng id với tag Required.
+- [ ] Không gắn Default cho tag nào → tạo công ty mới → `company_search_tag` rỗng, **vẫn lưu được**, banner cảnh báo hiện bình thường.
+
+## 7. Không làm trong sub-task này
+
+- ❌ Cột Search tag / Required / Default trong Master data — sub-task 1 và 2.
 - ❌ Vòng quay, con trỏ, response `premiumBand` — sub-task 4.
 - ❌ Giao diện hàng tag trên svn-web — sub-task 5.

@@ -52,24 +52,29 @@ TOÀN BỘ TIN TRONG HỆ THỐNG
 
 > **Hạng theo gói là SỐ THỨ TỰ DÒNG, không phải phép tính.** Sắp toàn bộ tin hợp lệ theo A2, áp A3, rồi tin rơi vào dòng nào thì hạng theo gói đúng bằng số dòng đó — dòng đầu là 1, dòng hai là 2, cho tới 101. Không cộng, không nhân, không quy đổi gì cả.
 >
-> **Ví dụ cụ thể, để các con số ở bước C không còn khó hiểu.** Giả sử bậc gói trên posting ladder là 300, 295, 291, 287, 280, 262… và có 3 tin đang mở ở bậc 300, 2 tin ở bậc 295, 4 tin ở bậc 291:
->
-> | Dòng | Bậc gói | Thứ tự trong bậc |
-> |---|---|---|
-> | 1, 2, 3 | 300 | theo thời điểm làm mới, mới trước |
-> | 4, 5 | 295 | theo thời điểm làm mới |
-> | 6, 7, 8, 9 | 291 | theo thời điểm làm mới |
-> | … | … | … |
->
-> Tin rơi vào dòng 5 có **hạng theo gói = 5**. Không phải 295 — đó là bậc gói nó đang đứng, chỉ dùng để sắp các bậc với nhau.
->
-> **Hai tin cùng một bậc gói vẫn có hạng khác nhau**, vì thời điểm làm mới tách chúng ra — đó chính là việc của khoá sắp xếp thứ hai. Tin ở bậc 280 làm mới sáng nay có thể là hạng 12, tin cùng bậc làm mới hôm qua là hạng 13.
->
 > **Không có hai tin nào cùng hạng theo gói.** A2 kết thúc bằng khoá phá hoà theo thời điểm tạo chính là để thứ tự luôn duy nhất. Hạng bằng nhau chỉ xuất hiện ở phía tương tác (bước B) — nên số lẻ kiểu 60,5 chỉ có ở cột đó, không bao giờ có ở cột hạng theo gói.
 
 > **Vì sao gom 101 chứ không phải 100:** để bảng đánh số luôn đủ một trăm dòng, bất kể có dòng Gợi ý hay không. Nhấc một tin ra khỏi 100 thì bảng chỉ còn 99 dòng, và người đọc gặp lại cùng một tin hai lần nếu giữ cả hai chỗ. Không lưu lại, đêm nào cũng tính lại.
 
 > **Không có cổng chặn tin miễn phí ở bước này.** Tin không mua gói vẫn hợp lệ, chỉ xếp cuối. Build hiện tại thì ngược lại — xem phần 3.1.
+
+**VÍ DỤ 1/3 — hạng theo gói hình thành thế nào**
+
+Bốn tin **P, Q, R, S** sẽ đi xuyên suốt cả ba bước trong ticket này. Đây là bước đầu. Giả sử bậc gói trên posting ladder là 300, 295, 291, 287, 280 và đêm đó có 3 tin đang mở ở bậc 300, 2 tin ở bậc 295, 4 tin ở bậc 291, 4 tin ở bậc 287, 7 tin ở bậc 280:
+
+| Dòng | Bậc gói | Tin nào rơi vào đây | Trong cùng bậc xếp theo |
+|---|---|---|---|
+| 1 – 3 | 300 | — | thời điểm làm mới, mới trước |
+| 4 – 5 | 295 | **P** ở dòng 5 | thời điểm làm mới |
+| 6 – 9 | 291 | — | thời điểm làm mới |
+| 10 – 13 | 287 | **R** ở dòng 12, **Q** ở dòng 13 | R được làm mới **gần đây hơn** Q một tiếng |
+| 14 – 20 | 280 | **S** ở dòng 20 | thời điểm làm mới |
+
+**Đọc ra hạng theo gói: P = 5, R = 12, Q = 13, S = 20.** Đúng là các con số ở cột "hạng theo gói" của bước C, và mỗi con số chỉ là một số thứ tự dòng.
+
+**R và Q cùng một bậc gói mà vẫn lệch nhau một bậc**, vì thời điểm làm mới tách chúng ra. Đó là thứ duy nhất sắp thứ tự hai tin trong cùng một bậc — và cũng là lý do gói có nhịp làm mới nhanh hơn thì đáng tiền hơn.
+
+**Không có phép tính nào ở đây.** Không nhân, không quy đổi. Số 287 và 300 chỉ dùng để biết bậc nào đứng trước bậc nào, xong là thôi.
 
 ### B — Lập hạng theo tương tác
 
@@ -91,6 +96,23 @@ TOÀN BỘ TIN TRONG HỆ THỐNG
 
 Cửa sổ 7 ngày chính là cơ chế làm mượt rồi (mỗi ngày chỉ thay 1/7 dữ liệu). **Không thêm công thức làm mượt nào khác**, và **không lưu điểm** — điểm thô luôn tính lại được từ dữ liệu gốc.
 
+**VÍ DỤ 2/3 — hạng theo tương tác hình thành thế nào**
+
+Vẫn bốn tin đó, sang bước hai. Điểm thô là tổng 7 ngày, mỗi lượt xem 1 điểm, mỗi lượt lưu 3, mỗi lượt ứng tuyển 5. Giả sử tuần đó có 20 trong 100 tin có điểm, 80 tin còn lại không có điểm nào — đúng hình dạng bình thường của bảng trong những tháng đầu:
+
+| Tin | Lượt xem | Lượt lưu | Lượt ứng tuyển | Điểm thô | Hạng tương tác |
+|---|---|---|---|---|---|
+| **S** | 180 | 20 | 9 | 180 + 60 + 45 = **285** | 1 |
+| **Q** | 150 | 14 | 6 | 150 + 42 + 30 = **222** | 2 |
+| 18 tin khác có điểm | … | … | … | 221 xuống 1 | 3 … 20 |
+| **P**, **R** và 78 tin nữa | 0 | 0 | 0 | **0** | **60,5** — tất cả |
+
+**Đọc ra hạng theo tương tác: S = 1, Q = 2, P = 60,5, R = 60,5.** Đúng là các con số ở cột "hạng theo tương tác" của bước C.
+
+**Số 60,5 ở đâu ra:** 80 tin cùng 0 điểm chiếm chung khoảng vị trí 21 đến 100. Trung bình của khoảng đó là (21 + 100) / 2 = 60,5, và cả 80 tin đều nhận số này. Không ai nhập con số đó vào đâu cả.
+
+**P và R không có điểm nào mà vẫn ở trên bảng**, vì bước A đưa chúng vào theo gói chứ không theo mức được quan tâm. Giai đoạn đầu đó là chuyện bình thường — và cũng chính là lý do trọng số gói để 0,9.
+
 ### C — Trộn, ra vị trí hiển thị
 
 ```
@@ -101,6 +123,8 @@ vị trí = ((1 − w) × hạng theo gói) + (w × hạng theo tương tác)
 
 Sắp **tăng dần**, số nhỏ hơn đứng trước. Bằng nhau thì hạng theo gói nhỏ hơn đứng trước. **Không có bước xáo trộn nào sau đây.**
 
+**VÍ DỤ 3/3 — trộn hai hạng lại.** Hai cột hạng dưới đây **đọc thẳng từ ví dụ 1 và ví dụ 2**, không phải số chọn đại:
+
 | Tin | Hạng theo gói | Hạng theo tương tác | Điểm vị trí | Hiển thị ở |
 |---|---|---|---|---|
 | P | 5 | 60,5 | 4,5 + 6,05 = 10,55 | 1 |
@@ -108,7 +132,7 @@ Sắp **tăng dần**, số nhỏ hơn đứng trước. Bằng nhau thì hạng
 | R | 12 | 60,5 | 10,8 + 6,05 = 16,85 | 3 |
 | S | 20 | 1 | 18 + 0,1 = 18,10 | 4 |
 
-**Đọc Q với R** — đây đúng là thứ tính năng này sinh ra để làm: R có **hạng gói tốt hơn** (12 so với 13, cùng bậc nhưng làm mới sớm hơn một tiếng) mà vẫn tụt xuống dưới Q, vì ứng viên quan tâm tới Q còn R thì không. Một bậc hạng gói đáng 0,9 điểm; khoảng cách giữa hạng tương tác tốt nhất và tệ nhất đáng khoảng 9,9 điểm.
+**Đọc Q với R** — đây đúng là thứ tính năng này sinh ra để làm: R có **hạng gói tốt hơn** (12 so với 13, cùng bậc nhưng được làm mới gần đây hơn một tiếng) mà vẫn tụt xuống dưới Q, vì ứng viên quan tâm tới Q còn R thì không. Một bậc hạng gói đáng 0,9 điểm; khoảng cách giữa hạng tương tác tốt nhất và tệ nhất đáng khoảng 9,9 điểm.
 
 **Đọc S với P:** S được quan tâm nhất cả bảng mà vẫn không vượt nổi P — P đứng trên nó **15 bậc** hạng gói, trong khi tương tác chỉ mua được khoảng 10 bậc. Gói vẫn là yếu tố chính.
 

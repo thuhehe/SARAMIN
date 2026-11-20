@@ -47,14 +47,14 @@ Luật chia bài cũ tối ưu cho **sự khác nhau giữa các tag** — khôn
 | **1** | **Tin vào dải**: như hiện tại (sản phẩm phủ placement + khớp từ khoá). Luật dưới đây không thêm/bớt tin nào, chỉ quyết định thứ tự. |
 | **2** | **Tag required**: đúng một dòng catalogue có cờ Required. Nó phủ **mọi tin trong dải** — định nghĩa theo TIN, không theo công ty (xem §4 câu 5). Luôn ở `tags[0]`, luôn được chọn sẵn. |
 | **3** | **Tag khác ứng cử** = hợp `company_search_tag` của mọi công ty có tin trong dải. **Loại tag lọc ra dưới 3 tin.** Không có luật trần. |
-| **4** | **Số tag hiện** = `số tin trong dải ÷ 3` (làm tròn xuống), **tối đa 8, tối thiểu 3**. Dưới 3 → `tags: []`, FE ẩn cả hàng tag. |
+| **4** | **Số tag hiện** = `số tin trong dải ÷ 3` (làm tròn xuống), **tối đa 10, tối thiểu 3**. Dưới 3 → `tags: []`, FE ẩn cả hàng tag. |
 | **5** | **Thứ tự tag**: slot 1 là tag required. Các slot còn lại **xoay vòng** — con trỏ trên danh sách tag ứng cử nhích `số tag hiện − 1` mỗi lượt tải. **Không ngẫu nhiên ở bất kỳ đâu.** |
 | **6** | **Luôn đúng một tag được chọn**, là tag required khi vào trang. Không có nút "Tất cả". |
 | **7** | **Mỗi tag một vòng riêng**: các tin tag đó phủ, xếp sao cho **mỗi công ty rải đều khắp vòng** — công ty có 12/33 tin thì cứ ~3 ô một tin, công ty 3 tin thì cứ ~11 ô một tin. **KHÔNG dùng round-robin** (luật cũ): nó vét hết công ty nhỏ trước rồi để công ty lớn chiếm cả đuôi vòng. |
 | **7b** | **Sửa vòng**: chỗ nào **3 ô liền nhau cùng công ty** thì nhấc tin ở giữa ra, cắm vào chỗ ít đụng nhất. Lặp tới khi hết hoặc không cải thiện được nữa. |
 | **8** | **Con trỏ.** Một **chu kỳ** là `ceil(N ÷ 3)` lượt tải, N là độ dài vòng của tag đó. Trong một chu kỳ con trỏ nhích **3**; hết chu kỳ thì chu kỳ sau **bắt đầu lệch đi 1 ô**. Công thức: `start = (3 × (load mod M) + floor(load ÷ M)) mod N` với `M = ceil(N ÷ 3)`. Nhích **3**, tuyệt đối không nhích 10. |
 | **8a** | **KHÔNG dùng "nhích 3, cộng 1 khi vòng lại".** Bản đầu của ticket này ghi như vậy và **nó sai** — chỉ đúng khi 3 chia hết N. Em đã kiểm mọi độ dài vòng từ 3 tới 300: hễ **N ≡ 1 (mod 3)** (N = 10, 16, 19, 22, 34 …) thì con trỏ rơi vào một quỹ đạo ngắn, không tới được phần lớn điểm bắt đầu, và **mọi tin bị ghim chết vào một ô vĩnh viễn** — đúng thứ cả mô hình này sinh ra để chống. Nó **pass** test với N = 33 và **fail** với N = 16, nên **phải test rule 8 trên một vòng có độ dài KHÔNG chia hết cho 3.** |
-| **8b** | **Mỗi tag bắt đầu ở một chỗ khác nhau.** Con trỏ của tag mang thêm một độ lệch cố định tính từ id tag: `offset = hash(tagId) mod N`, cộng vào `start` của luật 8. Không có nó, 3 thẻ mở đầu của cả 8 tag gộp lại chỉ có **16 tin khác nhau trên 24 ô**; có nó là **18.5**. Lấy từ **id của tag**, KHÔNG lấy từ vị trí tag trong hàng — luật 5 xoay vị trí mỗi lượt, lệch theo vị trí thì không ai tái hiện được. Vì offset cố định cho mỗi tag nên **không ảnh hưởng gì tới công bằng**: lịch xoay vòng của luật 8 giữ nguyên. |
+| **8b** | **Mỗi tag bắt đầu ở một chỗ khác nhau.** Con trỏ của tag mang thêm một độ lệch cố định tính từ id tag: `offset = hash(tagId) mod N`, cộng vào `start` của luật 8. Không có nó, 3 thẻ mở đầu của cả 10 tag gộp lại chỉ có **17.5 tin khác nhau trên 30 ô**; có nó là **20.4**. Lấy từ **id của tag**, KHÔNG lấy từ vị trí tag trong hàng — luật 5 xoay vị trí mỗi lượt, lệch theo vị trí thì không ai tái hiện được. Vì offset cố định cho mỗi tag nên **không ảnh hưởng gì tới công bằng**: lịch xoay vòng của luật 8 giữ nguyên. |
 | **9** | **Rút thẻ**: tối đa 10 thẻ từ con trỏ, chia thành trang 3 + 3 + 3 + 1. **Trong một trang 3 thẻ, một công ty tối đa 2 thẻ** — tới thẻ thứ 3 của công ty đó thì bỏ qua, lấy tin kế tiếp trên vòng. Không còn gì để thay (dải chỉ 1 công ty) thì cứ điền. |
 | **10** | **Không trả `count`.** |
 
@@ -69,7 +69,7 @@ Con trỏ cần một bộ đếm. **Không dùng `Random`, không dùng timesta
 
 ## 4. Trả lời 7 câu hỏi của Long (comment 16/11)
 
-1. **Dải đọc tối đa bao nhiêu tin?** Bỏ giới hạn 50. Đọc **id của toàn bộ tập đủ điều kiện** (rẻ) vì đó mới là thứ vòng quay chạy trên; chỉ **hydrate đầy đủ ≤ 80 id** thật sự vào response. Cắt tập đủ điều kiện sẽ **đóng băng vĩnh viễn** những tin nằm ngoài — đúng thứ mô hình này sinh ra để chống.
+1. **Dải đọc tối đa bao nhiêu tin?** Bỏ giới hạn 50. Đọc **id của toàn bộ tập đủ điều kiện** (rẻ) vì đó mới là thứ vòng quay chạy trên; chỉ **hydrate đầy đủ ≤ 100 id** thật sự vào response. Cắt tập đủ điều kiện sẽ **đóng băng vĩnh viễn** những tin nằm ngoài — đúng thứ mô hình này sinh ra để chống.
 2. **Luật 4 khi không đủ tag:** "số tin trong dải" là **toàn bộ tin của dải** (tag required phủ hết nên không còn phân biệt). Dưới 3 tag ứng cử → `tags: []`, ẩn hẳn hàng tag, **không** hiện 2 tag.
 3. **Luật 3b (tag đầu phủ nhiều công ty nhất):** **BỎ.** Tag required thay thế hoàn toàn.
 4. **Luật 8 cũ (2 card liền nhau không cùng công ty):** **BỎ.** Thay bằng luật 7/7b (xếp vòng) + luật 9 (rút thẻ).
@@ -79,7 +79,7 @@ Con trỏ cần một bộ đếm. **Không dùng `Random`, không dùng timesta
 
 ## 5. Acceptance
 
-- [ ] Dải 33 tin / 6 công ty → `tags` có 8 phần tử, `tags[0].required === true`.
+- [ ] Dải 33 tin / 6 công ty → `tags` có **10** phần tử (33 ÷ 3 = 11, chặn ở trần 10), `tags[0].required === true`.
 - [ ] Gọi 11 lượt liên tiếp với `bandSeq` 0→10, gom 3 id đầu của `cards[tag required]` mỗi lượt → **đúng 33 id, không trùng cái nào**.
 - [ ] Gọi tiếp lượt 11→21: mỗi tin xuất hiện ở **ô khác** so với vòng trước (không tin nào ở nguyên một vị trí).
 - [ ] **Test riêng luật 8 với vòng 16 tin** (hoặc bất kỳ N ≡ 1 mod 3): sau `N × ceil(N/3)` lượt, **mọi tin đều đã đi qua cả ô 1, ô 2 và ô 3**. Đây là ca mà công thức sai vẫn pass với N = 33.

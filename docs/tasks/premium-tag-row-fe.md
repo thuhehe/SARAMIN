@@ -38,7 +38,7 @@ Con trỏ của BE cần biết đây là lượt tải thứ mấy. Nếu FE kh
 
 ## 4. Đếm lượt hiển thị
 
-- **Chỉ đếm card NHÌN THẤY.** Một response mang tới 8 tag × 10 card; ứng viên thấy 3. Đếm nguyên response thì báo cáo của khách hàng phồng lên khoảng 8 lần.
+- **Chỉ đếm card NHÌN THẤY.** Một response mang tới 10 tag × 10 card; ứng viên thấy 3. Đếm nguyên response thì báo cáo của khách hàng phồng lên khoảng 10 lần.
 - Một card được tính khi **tag của nó đang được chọn** *và* **nó nằm trong 3 ô đang hiện**. Lật trang carousel sang 3 card mới thì 3 card đó mới được tính.
 - **Ghi lại mọi cú bấm tag** (`tag_select`, BE đã nhận trong sub-task 4). Đây là bằng chứng duy nhất về việc tag nào có người dùng, và là căn cứ duy nhất để sau này cắt bớt danh sách tag.
 

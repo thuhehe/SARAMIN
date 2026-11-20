@@ -61,6 +61,6 @@ Chốt: bỏ vế thứ nhất. Trong một trang 3 thẻ, một công ty tối 
 
 ## 5. Còn mở
 
-**Các tag mở ra những tập tin trùng nhau.** Đo trên ví dụ 33 tin: 3 thẻ đầu của cả 8 tag gộp lại chỉ có **16 tin khác nhau trên 24 ô**, vì mọi vòng dựng giống nhau và mọi con trỏ bắt đầu cùng chỗ. Lệch con trỏ mỗi tag theo vị trí của nó trong hàng đưa lên **18.9/24**, tốn một dòng code. Một bước khử trùng hẳn giữa các tag đạt ~**22.8/24** nhưng kéo lại đúng phần phức tạp vừa bỏ đi.
+**Các tag mở ra những tập tin trùng nhau.** Đo trên ví dụ 33 tin: 3 thẻ đầu của cả 10 tag gộp lại chỉ có **17.5 tin khác nhau trên 30 ô**, vì mọi vòng dựng giống nhau và mọi con trỏ bắt đầu cùng chỗ. Lệch con trỏ mỗi tag theo vị trí của nó trong hàng đưa lên **20.4/30**, tốn một dòng code. Một bước khử trùng hẳn giữa các tag đạt cao hơn nữa nhưng kéo lại đúng phần phức tạp vừa bỏ đi.
 
 Đề xuất: lấy phương án lệch con trỏ, chỉ xem lại nếu khách nêu. Theo mô hình vòng quay thì tag trùng nhau **không làm tin nào mất lượt hiện** — nên đây là vấn đề cảm giác, không phải công bằng.
