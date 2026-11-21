@@ -132,9 +132,11 @@ function HomeScreen() {
    See Job management → Job list (Search result) → "THE BLUE ZONE'S TAG ROW". */
 const BAND_REQUIRED = 'featured'
 
-/* Slot 1 is always the required tag — every company holds it, so it covers the whole
-   band and is what guarantees no paying advertiser is left off a chip. The rest
-   rotate; six are shown here, the real row shows up to eight. */
+/* The Required tags take the first slots — every POSTING carries them, so each covers
+   the whole band and no paying advertiser can be left off a chip. HQ marks one or more
+   in Master data; one is the working recommendation and one is what this screen shows,
+   because each extra Required tag is another chip that filters nothing. The rest
+   rotate; six are shown here, the real row shows up to ten. */
 const BAND_TAGS: { id: string; label: string }[] = [
   { id: BAND_REQUIRED, label: '✨ Việc làm nổi bật' },
   { id: 'bonus13', label: '💰 Lương tháng 13' },
