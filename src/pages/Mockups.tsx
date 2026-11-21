@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Browser, JsHeader, JobCard, Btn, Chip, SectionTitle, NavContext, useNav } from '@/components/wire'
 import { BenefitCards } from '@/components/BenefitsField'
 import { SaraminCvDoc, CvComposer, CvRichText, normalizeCvText, type CvData } from '@/components/CvDoc'
@@ -329,50 +329,90 @@ function PremiumBand({ onOpen }: { onOpen: () => void }) {
   )
 }
 
-/* ── The Top section ─────────────────────────────────────────────────────────
-   The band above the result list, heading "Việc {từ khoá} dành cho bạn". It is a
-   PLACEMENT, like the Blue zone: membership comes from the product the posting was
-   published on, never from the posting itself.
+/* ── The Top section ────────────────────────────────────────
+   The band above the result list. It is a PLACEMENT, like the Blue zone: membership
+   comes from the product the posting was published on, never from the posting itself.
 
-   Two rules decided 20/11/2026 (Thu) that this band did not have before:
+   Settled 21/11/2026 (Thu) against Saramin KR’s own 회원님을 위한 공고 band. Four
+   changes from what the build does today, all of them in SRM-1739:
 
-   1. IT OBEYS THE SEARCH BAR, not only the keyword. The pool is "matches the
-      keyword AND matches every filter the candidate has set" — the same facets the
-      result list applies. A band that keeps its cards while the list below changes
-      is advertising jobs the candidate has just ruled out. No top-up and no
-      fallback: fewer qualifying jobs means fewer cards, none means no band.
-   2. IT ROTATES, conveyor-style. The line is still `lastRefreshedAt` first, but a
-      window of 8 walks it 4 at a time: slide 2 becomes slide 1 each period and the
-      next four in the line enter slide 2, wrapping at the end. Period =
-      `rotation_seconds` on the placement (300 s on production today). Without it
-      only the 8 freshest postings are ever seen — on production 2.618 of 2.626
-      eligible postings had never once appeared.
+   1. IT ALWAYS RENDERS. Keyword only, filters only, both, or neither — neither means
+      the whole eligible pool. It is withheld only when no eligible job exists at all.
+      Before this it needed a keyword, so arriving from a filter link gave no band.
+   2. IT OBEYS THE SEARCH BAR. The pool is narrowed by the keyword AND every filter the
+      result list applies. A band that keeps its cards while the list below changes is
+      advertising jobs the candidate has just ruled out. No top-up, no fallback.
+   3. TWENTY CARDS, FOUR A SLIDE, FIVE SLIDES, and the window walks the line four at a
+      time each `rotation_seconds` (300 s). Slide 2 becomes slide 1, the next four enter
+      slide 5, the end wraps to the head. Without it only the freshest cards are ever
+      seen — on production 2.618 of 2.626 eligible postings had never appeared once.
+   4. ONE COMPANY PER SLIDE. At most one of the four cards, so at most five across the
+      band. With today’s data one employer holds 98,7 % of the pool and the rule cannot
+      always be met; the band spreads as far as the pool allows and no further.
 
-   Both are in SRM-1739 and are NOT on production yet. A static prototype can only
-   show the two slides and the arrows; the caption under the band names the step. */
+   The carousel plays by itself with a pause control, counts slides as “n / 5”, and has
+   NO “see more” button — KR has 더보기 and this band does not. The prototype below runs
+   the autoplay for real so the control can be judged; the 5-minute conveyor it cannot
+   show, so the caption names it. */
 const TOP_SEARCH_JOBS = [
   { title: 'Frontend Engineer (ReactJS)', co: 'MB Bank', salary: '25 – 40 tr', tag: 'Urgent Hiring' },
   { title: 'Senior React Developer', co: 'Techcombank', salary: '35 – 55 tr', tag: 'Hot job' },
   { title: 'Frontend Team Lead', co: 'VPBank', salary: 'Thỏa thuận', tag: '' },
   { title: 'Web Developer (Vue/React)', co: 'ACB', salary: '20 – 30 tr', tag: '' },
-  { title: 'UI Engineer', co: 'Sacombank', salary: 'Up to 45 tr', tag: 'Urgent Hiring' },
+
+  { title: 'UI Engineer', co: 'MB Bank', salary: 'Up to 45 tr', tag: 'Urgent Hiring' },
   { title: 'Frontend Developer (Fresher)', co: 'HDBank', salary: '12 – 18 tr', tag: '' },
   { title: 'ReactJS Developer', co: 'TPBank', salary: '22 – 35 tr', tag: '' },
   { title: 'Fullstack Engineer (FE-heavy)', co: 'VIB', salary: '30 – 50 tr', tag: 'Hot job' },
+
+  { title: 'Senior Frontend (Next.js)', co: 'MB Bank', salary: '40 – 60 tr', tag: '' },
+  { title: 'Mobile Web Developer', co: 'Sacombank', salary: '18 – 28 tr', tag: '' },
+  { title: 'Frontend Engineer (Internal tools)', co: 'MSB', salary: 'Thỏa thuận', tag: 'Hot job' },
+  { title: 'UI/UX Developer', co: 'SeABank', salary: '20 – 32 tr', tag: '' },
+  { title: 'React Native Developer', co: 'MB Bank', salary: '28 – 42 tr', tag: '' },
+  { title: 'Frontend Architect', co: 'OCB', salary: 'Up to 70 tr', tag: 'Urgent Hiring' },
+  { title: 'Web Engineer (E-banking)', co: 'Nam A Bank', salary: '22 – 33 tr', tag: '' },
+  { title: 'Junior Frontend Developer', co: 'BVBank', salary: '10 – 15 tr', tag: '' },
+
+  { title: 'Lead Frontend Engineer', co: 'MB Bank', salary: 'Thỏa thuận', tag: 'Hot job' },
+  { title: 'Frontend Developer (ReactJS)', co: 'Eximbank', salary: '20 – 30 tr', tag: '' },
+  { title: 'Senior Web Developer', co: 'LPBank', salary: '30 – 45 tr', tag: '' },
+  { title: 'Frontend Engineer (Data viz)', co: 'PVcomBank', salary: '25 – 38 tr', tag: '' },
 ]
 
+const TOP_SEARCH_SLIDES = Math.ceil(TOP_SEARCH_JOBS.length / 4)
+
 function TopSearchBand({ onOpen }: { onOpen: () => void }) {
-  /* 8 cards, two slides of four. On the live page the whole window also advances by
-     four every `rotation_seconds`, which a prototype cannot show — hence the caption. */
   const [page, setPage] = useState(0)
-  const pages = 2
+  const [playing, setPlaying] = useState(true)
+  /* Autoplay is the band’s own behaviour, not a prototype flourish — the pause control
+     only means something if something is moving. It is NOT the 5-minute conveyor: that
+     changes WHICH twenty jobs are in the band, this only turns the pages of those twenty. */
+  useEffect(() => {
+    if (!playing) return
+    const t = setInterval(() => setPage((prev) => (prev + 1) % TOP_SEARCH_SLIDES), 3000)
+    return () => clearInterval(t)
+  }, [playing])
   const cards = TOP_SEARCH_JOBS.slice(page * 4, page * 4 + 4)
-  const step = (d: number) => setPage((prev) => (prev + d + pages) % pages)
+  const step = (d: number) => setPage((prev) => (prev + d + TOP_SEARCH_SLIDES) % TOP_SEARCH_SLIDES)
   return (
     <section className="mb-4 rounded-xl border border-brand/20 bg-brand/[0.045] p-3.5">
-      <div className="mb-2.5 flex flex-wrap items-baseline gap-2.5">
+      <div className="mb-2.5 flex flex-wrap items-center gap-2.5">
         <p className="text-[14px] font-bold text-ink">Việc frontend dành cho bạn</p>
-        <span className="text-[11.5px] text-muted">8 tin · lọc theo từ khoá và bộ lọc đang chọn</span>
+        <span className="text-[11.5px] text-muted">20 tin · lọc theo từ khoá và bộ lọc đang chọn</span>
+        {/* Pause / play and the slide counter sit together at the right, as KR has them.
+            There is deliberately no "see more" button beside them. */}
+        <span className="ml-auto flex items-center gap-2">
+          <span
+            onClick={() => setPlaying((p) => !p)}
+            className="grid h-6 w-6 cursor-pointer place-items-center rounded-full border border-brand/25 bg-surface text-[10px] text-muted hover:border-brand hover:text-brand"
+          >
+            {playing ? '❙❙' : '▶'}
+          </span>
+          <span className="text-[12px] font-semibold text-ink">
+            {page + 1} <span className="font-normal text-faint">/ {TOP_SEARCH_SLIDES}</span>
+          </span>
+        </span>
       </div>
       <div className="flex items-stretch gap-2">
         <BandArrow onClick={() => step(-1)}>‹</BandArrow>
@@ -400,7 +440,7 @@ function TopSearchBand({ onOpen }: { onOpen: () => void }) {
         <BandArrow onClick={() => step(1)}>›</BandArrow>
       </div>
       <p className="mt-2 text-center text-[10.5px] text-muted">
-        {page + 1} / {pages} · mỗi 5 phút slide 2 lên slide 1, 4 tin tiếp theo vào slide 2
+        Mỗi công ty nhiều nhất 1 thẻ trong một slide · mỗi 5 phút cả hàng dịch 4 tin: slide 2 lên slide 1, 4 tin tiếp theo vào slide 5
       </p>
     </section>
   )
