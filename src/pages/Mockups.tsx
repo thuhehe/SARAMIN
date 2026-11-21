@@ -382,7 +382,7 @@ const TOP_SEARCH_JOBS = [
 
 const TOP_SEARCH_SLIDES = Math.ceil(TOP_SEARCH_JOBS.length / 4)
 
-function TopSearchBand({ onOpen }: { onOpen: () => void }) {
+function TopSearchBand({ keyword, onOpen }: { keyword: string | null; onOpen: () => void }) {
   const [page, setPage] = useState(0)
   const [playing, setPlaying] = useState(true)
   /* Autoplay is the band’s own behaviour, not a prototype flourish — the pause control
@@ -398,8 +398,15 @@ function TopSearchBand({ onOpen }: { onOpen: () => void }) {
   return (
     <section className="mb-4 rounded-xl border border-brand/20 bg-brand/[0.045] p-3.5">
       <div className="mb-2.5 flex flex-wrap items-center gap-2.5">
-        <p className="text-[14px] font-bold text-ink">Việc frontend dành cho bạn</p>
-        <span className="text-[11.5px] text-muted">20 tin · lọc theo từ khoá và bộ lọc đang chọn</span>
+        {/* The heading names the keyword, or nothing. Filters are never composed into
+            it — "Việc làm tại Đà Nẵng và Hà Nội ngành IT dành cho bạn" is what that
+            would read like once a candidate ticks the three boxes they usually tick. */}
+        <p className="text-[14px] font-bold text-ink">
+          {keyword ? `Việc ${keyword} dành cho bạn` : 'Việc làm dành cho bạn'}
+        </p>
+        <span className="text-[11.5px] text-muted">
+          20 tin · lọc theo {keyword ? 'từ khoá và bộ lọc đang chọn' : 'bộ lọc đang chọn'}
+        </span>
         {/* Pause / play and the slide counter sit together at the right, as KR has them.
             There is deliberately no "see more" button beside them. */}
         <span className="ml-auto flex items-center gap-2">
@@ -448,13 +455,25 @@ function TopSearchBand({ onOpen }: { onOpen: () => void }) {
 
 function SearchScreen() {
   const go = useNav()
+  /* The band renders with or without a keyword, and only its HEADING differs. Empty the
+     box to see the state that does not exist today: filters set, no keyword, band still
+     there. That state is also the search page's default. */
+  const [keyword, setKeyword] = useState<string | null>('frontend')
   return (
     <div>
       <JsHeader active="Jobs" />
       <div className="flex items-center gap-2 border-b border-line px-5 py-3">
-        <div className="flex-1 rounded-md border border-line px-3 py-2 text-[12px] text-faint">"frontend"</div>
+        <div className="flex-1 rounded-md border border-line px-3 py-2 text-[12px] text-faint">
+          {keyword ? `"${keyword}"` : <span className="italic">chưa gõ từ khoá</span>}
+        </div>
         <div className="w-40 rounded-md border border-line px-3 py-2 text-[12px] text-faint">Hồ Chí Minh</div>
         <Btn primary>Search</Btn>
+        <span
+          onClick={() => setKeyword((k) => (k ? null : 'frontend'))}
+          className="cursor-pointer whitespace-nowrap rounded-full border border-dashed border-brand/40 px-2.5 py-1 text-[10.5px] text-brand hover:bg-brand/5"
+        >
+          {keyword ? 'xem khi bỏ từ khoá' : 'gõ lại từ khoá'}
+        </span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)]">
         {/* filters */}
@@ -486,7 +505,7 @@ function SearchScreen() {
         <div className="p-4">
           {/* The Top section sits ABOVE the result list; the Blue zone is inserted
               INTO it further down. One match set, three orders. */}
-          <TopSearchBand onOpen={() => go('js-job-detail')} />
+          <TopSearchBand keyword={keyword} onOpen={() => go('js-job-detail')} />
           <div className="mb-3 flex items-center justify-between">
             <p className="text-[12.5px] text-muted"><span className="font-semibold text-ink">1,248</span> jobs found</p>
             <div className="flex items-center gap-2 text-[11.5px] text-muted">Sort: <Chip tone="blue">Recommended</Chip><Chip>Date posted</Chip><Chip>Closing soonest</Chip></div>
