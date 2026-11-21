@@ -6,6 +6,10 @@
 
 > **VIẾT LẠI 19/11/2026 — luật chia bài đã bị bỏ hoàn toàn.** Nếu bạn đã đọc bản trước của ticket này, bỏ hết: không còn xáo, không còn chia vòng tròn, không còn "mỗi tag mở ra một tập khác nhau". Đọc lại từ đầu.
 
+> **SỬA 20/11/2026 — luật 8 (con trỏ) đã viết sai, xem luật 8a.** Thêm luật 8b. **Trần số tag hiện đổi 8 → 10** (luật 4).
+
+> **SỬA 21/11/2026 — luật 2 viết sai, xem luật 2 và 2b.** Tag Required là **MỘT HOẶC NHIỀU** (không phải đúng một), và nó gắn vào **TIN ĐĂNG** chứ không phải công ty. Cờ Default đã bị xoá khỏi toàn bộ scope.
+
 ---
 
 ## 0. Vì sao đổi
@@ -45,10 +49,11 @@ Luật chia bài cũ tối ưu cho **sự khác nhau giữa các tag** — khôn
 | # | Luật |
 |---|---|
 | **1** | **Tin vào dải**: như hiện tại (sản phẩm phủ placement + khớp từ khoá). Luật dưới đây không thêm/bớt tin nào, chỉ quyết định thứ tự. |
-| **2** | **Tag required**: đúng một dòng catalogue có cờ Required. Nó phủ **mọi tin trong dải** — định nghĩa theo TIN, không theo công ty (xem §4 câu 5). Luôn ở `tags[0]`, luôn được chọn sẵn. |
+| **2** | **Tag required — MỘT HOẶC NHIỀU.** HQ tick cờ Required cho một hoặc nhiều dòng catalogue (trong số các dòng đã bật Search tag). **Mọi tin đăng đều mang các tag đó** — tin đang mở và tin tạo về sau — nên mỗi tag Required phủ **toàn bộ** dải. Gắn lúc **dựng dải**, **không lưu xuống tin, không lưu xuống công ty**. Chúng chiếm các ô đầu của hàng tag theo thứ tự catalogue, và cái đầu tiên là tag được chọn sẵn. **Không bao giờ là 0** — hệ thống từ chối gỡ dòng Required cuối cùng. |
+| **2b** | **Mỗi tag Required thêm vào là một chip không lọc được gì**, vì nó phủ cả dải. Chúng chiếm ô đầu nên dải nhỏ bị lấn: dải 12 tin chỉ có 4 chip, 3 tag Required thì còn đúng 1 ô cho tag lọc thật. Nếu các tag Required chiếm hết số ô thì dải chỉ hiện chúng, không có gì xoay vòng. Không cần code chặn — chỉ cần **đừng giả định `tags[0]` là tag Required duy nhất**. |
 | **3** | **Tag khác ứng cử** = hợp `company_search_tag` của mọi công ty có tin trong dải. **Loại tag lọc ra dưới 3 tin.** Không có luật trần. |
 | **4** | **Số tag hiện** = `số tin trong dải ÷ 3` (làm tròn xuống), **tối đa 10, tối thiểu 3**. Dưới 3 → `tags: []`, FE ẩn cả hàng tag. |
-| **5** | **Thứ tự tag**: slot 1 là tag required. Các slot còn lại **xoay vòng** — con trỏ trên danh sách tag ứng cử nhích `số tag hiện − 1` mỗi lượt tải. **Không ngẫu nhiên ở bất kỳ đâu.** |
+| **5** | **Thứ tự tag**: các tag Required chiếm các ô đầu, theo thứ tự catalogue. Các slot còn lại **xoay vòng** — con trỏ trên danh sách tag ứng cử nhích `số tag hiện − 1` mỗi lượt tải. **Không ngẫu nhiên ở bất kỳ đâu.** |
 | **6** | **Luôn đúng một tag được chọn**, là tag required khi vào trang. Không có nút "Tất cả". |
 | **7** | **Mỗi tag một vòng riêng**: các tin tag đó phủ, xếp sao cho **mỗi công ty rải đều khắp vòng** — công ty có 12/33 tin thì cứ ~3 ô một tin, công ty 3 tin thì cứ ~11 ô một tin. **KHÔNG dùng round-robin** (luật cũ): nó vét hết công ty nhỏ trước rồi để công ty lớn chiếm cả đuôi vòng. |
 | **7b** | **Sửa vòng**: chỗ nào **3 ô liền nhau cùng công ty** thì nhấc tin ở giữa ra, cắm vào chỗ ít đụng nhất. Lặp tới khi hết hoặc không cải thiện được nữa. |
@@ -73,12 +78,16 @@ Con trỏ cần một bộ đếm. **Không dùng `Random`, không dùng timesta
 2. **Luật 4 khi không đủ tag:** "số tin trong dải" là **toàn bộ tin của dải** (tag required phủ hết nên không còn phân biệt). Dưới 3 tag ứng cử → `tags: []`, ẩn hẳn hàng tag, **không** hiện 2 tag.
 3. **Luật 3b (tag đầu phủ nhiều công ty nhất):** **BỎ.** Tag required thay thế hoàn toàn.
 4. **Luật 8 cũ (2 card liền nhau không cùng công ty):** **BỎ.** Thay bằng luật 7/7b (xếp vòng) + luật 9 (rút thẻ).
-5. **Tin đăng ẩn danh:** không có công ty nên không có company tag — nhưng **tag required định nghĩa theo TIN, không theo công ty**, nên tin ẩn danh vẫn nằm trong vòng của tag required. Không mất tin nào.
+5. **Tin đăng ẩn danh:** không có công ty nên không có company tag — nhưng tag Required **gắn vào TIN**, nên tin ẩn danh mang nó như mọi tin khác. Không mất tin nào. (Bản sửa 21/11 làm chỗ này đơn giản hẳn: luật 2 không còn phải vòng qua công ty nữa.)
 6. **Chuỗi dự phòng bằng Highlights:** **BỎ HẲN.** Tag required làm nó không thể với tới: không công ty nào có tin không thuộc tag nào nữa.
 7. **Tiếng Hàn:** đúng, `/ko` dùng tên tiếng Anh. Catalogue không có cột tiếng Hàn và không bổ sung trong scope này.
 
 ## 5. Acceptance
 
+- [ ] HQ tick Required cho **3 tag** → cả 3 nằm ở **3 ô đầu** của `tags`, cả 3 có `required: true`, và `cards` của cả 3 đều phủ **toàn bộ tin của dải**.
+- [ ] Dải 12 tin (4 chip) + 3 tag Required → 3 ô đầu là Required, còn đúng **1 ô** xoay vòng.
+- [ ] Tin đăng ẩn danh có mặt trong `cards` của **mọi** tag Required.
+- [ ] Không có bảng/cột nào lưu tag Required xuống từng tin đăng hay từng công ty.
 - [ ] Dải 33 tin / 6 công ty → `tags` có **10** phần tử (33 ÷ 3 = 11, chặn ở trần 10), `tags[0].required === true`.
 - [ ] Gọi 11 lượt liên tiếp với `bandSeq` 0→10, gom 3 id đầu của `cards[tag required]` mỗi lượt → **đúng 33 id, không trùng cái nào**.
 - [ ] Gọi tiếp lượt 11→21: mỗi tin xuất hiện ở **ô khác** so với vòng trước (không tin nào ở nguyên một vị trí).

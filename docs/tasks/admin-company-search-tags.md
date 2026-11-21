@@ -4,9 +4,13 @@
 **Requirement:** [saramin-eta.vercel.app → CRM → Companies](https://saramin-eta.vercel.app/m/crm/companies#company-page-tab-highlights-splits-in-two-one-set-for-the-company-page-one-for-job-search)
 **Mockup bấm được:** https://claude.ai/artifact/Czeaekg1FjX1PKmnV6szc4 — **màn 2 · Company page tab**
 
-> **CẬP NHẬT 19/11/2026.** Tag Required hiện trong mục này nhưng **không sửa được**, và **chuỗi dự phòng bằng Highlights đã bị bỏ hẳn** — kéo theo nội dung banner cảnh báo phải viết lại.
+> **CẬP NHẬT 19/11/2026.** **Chuỗi dự phòng bằng Highlights đã bị bỏ hẳn** — kéo theo nội dung banner cảnh báo phải viết lại. Trần số tag hiện trên dải đổi 8 → **10**.
 >
-> **CẬP NHẬT 20/11/2026.** Thêm mục 3: **công ty tạo mới nhận sẵn các tag Default**. Và trần số tag hiện trên dải đổi từ 8 → **10**.
+> ## ⚠️ VIẾT LẠI 21/11/2026 — bỏ hai thứ khỏi ticket này
+>
+> **1. Mục "công ty tạo mới nhận sẵn tag Default" đã XOÁ**, cùng với bước chép một lần cho công ty cũ. Cờ Default không còn tồn tại (xem SRM-1718). **Đừng cài từ bản 20/11.**
+>
+> **2. Tag Required KHÔNG hiện trong mục 3b nữa.** Bản trước ghi nó hiện ở đây dạng tick sẵn + làm mờ — sai. Tag Required gắn vào **TIN ĐĂNG**, không công ty nào "có" nó, nên nó không thuộc danh sách này.
 
 ---
 
@@ -25,49 +29,21 @@ Section 3 của tab Company page trước nay giữ một bộ chip: tối đa 6
 - **Mười hai, không phải sáu.** Hàng tag lấy từ hợp các tag của mọi công ty trong dải và chỉ hiện tối đa 10 — nên 12 không phải 12 chip trên màn, mà là **12 cơ hội lọt vào 10 ô**. Công ty chọn 6 thì vào vòng quay bằng nửa công ty chọn 12. Đó là động lực đúng.
 - **Dùng lại đúng dialog chọn chip của 3a** — bảng tìm kiếm được, có nhóm / mức ưu tiên / tiêu chí mỗi dòng. Chỉ khác danh sách nguồn và giới hạn. Mở từ 3b thì ghi rõ trên header, không thì danh sách ngắn hơn sẽ bị đọc như lỗi.
 
-## 2. Tag Required — hiện, nhưng không sửa được
+## 2. Tag Required KHÔNG nằm trong mục này
 
-- Tag đang mang cờ Required (sub-task 2) **luôn hiện đầu mục 3b**: đã tick, làm mờ, có huy hiệu **Bắt buộc**, không bỏ tick được.
-- Nó **không tính vào giới hạn 12**. Công ty vẫn chọn được đủ 12 tag khác.
-- Kèm một dòng giải thích ngắn: *công ty nào cũng có tag này, HQ đặt trong Master data.*
-- **Không ghi nó vào `company_search_tag`.** svn-be thêm vào lúc dựng dải. Lưu 10.000 dòng giống hệt nhau chỉ để nói "mọi công ty đều có" là sai hướng.
+Mục 3b là danh sách tag **công ty này có**. Tag Required thì **không công ty nào "có"** — nó gắn vào mọi tin đăng trên hệ thống, do HQ đặt một lần trong Master data (SRM-1718).
 
-> Phải hiện nó, dù không sửa được. Người nhập liệu cần thấy công ty **đã** với tới được tag mở đầu của dải mà không phải làm gì — nếu không thì 12 ô bên dưới trông như bắt buộc, trong khi chúng là tuỳ chọn.
+- **Không hiện tag Required trong picker của 3b**, kể cả dạng tick sẵn làm mờ. Để nó vào danh sách này là làm nó trông như một thuộc tính của công ty mà một ngày nào đó có người bỏ tick được.
+- **Không ghi nó vào `company_search_tag`.** svn-be gắn lúc dựng dải. Lưu 10.000 dòng giống hệt nhau chỉ để nói "mọi tin đều có" là sai hướng.
+- **Không tính vào giới hạn 12** — không liên quan, nó đâu nằm trong danh sách.
 
-## 3. Công ty tạo mới nhận sẵn các tag Default
+Thay vào đó, **một dòng chú thích dưới mục 3b**:
 
-HQ đánh dấu một số dòng catalogue là **Default** ở Master data (sub-task 2, SRM-1718). Khi một công ty được **tạo mới**, chép toàn bộ các dòng đó vào `company_search_tag` của công ty đó.
+> *Ngoài các tag chọn ở đây, mọi tin của công ty còn mang sẵn các tag bắt buộc do HQ đặt.*
 
-| | |
-|---|---|
-| Chép lúc nào | **đúng lúc tạo record công ty**, trong cùng transaction |
-| Chép xong là gì | **tag bình thường** — sales gỡ được, tính vào giới hạn 12 |
-| Vượt 12 dòng Default | chép **12 dòng đầu** theo thứ tự catalogue, bỏ phần dư. Master data đã cảnh báo HQ chuyện này rồi |
-| HQ sửa danh sách Default sau đó | **không đụng** công ty đã tồn tại |
-| Tag Required | **KHÔNG** nằm trong đây — nó không lưu per-company |
+Dòng đó nói cho người nhập liệu biết họ đang chọn **thêm vào trên nền gì**, mà không bịa ra một dòng họ không sở hữu.
 
-> **Vì sao chép một lần chứ không phải liên kết sống.** Nếu Default là liên kết sống thì lần sau HQ sửa danh sách, mọi thao tác gỡ tag của sales bị ghi đè, và hàng nghìn công ty bị viết lại từ một màn hình mà không có dấu vết ai yêu cầu. Chép một lần là hướng an toàn và cũng là hướng trung thực duy nhất.
-
-### Công ty đã tồn tại từ trước — CHỐT 20/11/2026: có chạy
-
-Mọi công ty trên hệ thống hôm nay đều có trước cờ Default, nên sẽ **không bao giờ** nhận được tag mặc định. Chạy một bước chép dữ liệu một lần:
-
-- chép các dòng Default **chỉ vào công ty đang có `company_search_tag` RỖNG**
-- **không ghi đè** gì; công ty đã có tag thì để nguyên
-- tôn trọng giới hạn 12 như lúc tạo công ty mới
-- xoá đi được nếu kết quả sai (xoá đúng các dòng vừa chép)
-
-> ### ⚠️ KHÔNG gói bước này vào migration của release
->
-> Migration thêm cột **cố ý không bật Default cho dòng nào** — chọn dòng nào là quyết định của HQ. Nên nếu bước chép nằm chung release, nó sẽ **chạy vào tập rỗng và không làm gì cả** — im lặng, không lỗi, và không ai biết cho tới khi vài tháng sau có người thắc mắc sao không công ty nào có tag mặc định.
->
-> **Thứ tự bắt buộc:** ship cờ Default → **HQ vào Master data chọn các dòng Default** → *rồi mới* chạy bước chép, như một lệnh riêng chạy khi được yêu cầu.
-
-**Đếm trước, ghi sau.** Lệnh phải có chế độ chỉ đếm: in ra *bao nhiêu công ty sẽ bị tác động* và *bao nhiêu dòng sẽ được ghi*, trước khi ghi bất cứ gì. Chạy thật là một lệnh riêng.
-
-**Một trường hợp bước chép không phân biệt được**, nói trước cho khỏi bất ngờ: công ty bị **gỡ hết tag có chủ ý** trông y hệt công ty **chưa ai điền** — đều là danh sách rỗng, không có cột nào phân biệt — nên cả hai đều được chép tag mặc định vào. Hiếm, chấp nhận được; con số in ra ở bước đếm là chốt chặn để không làm sai hàng loạt.
-
-## 4. Banner cảnh báo — viết lại
+## 3. Banner cảnh báo — viết lại
 
 Bản cũ ghi: công ty mua placement mà chưa chọn Search tag thì hệ thống mượn tạm Highlights của trang công ty, không có nữa thì tin không thuộc tag nào. **Bỏ hết.** Tag Required khiến chuyện đó không xảy ra được.
 
@@ -79,7 +55,7 @@ Banner vẫn còn, nhưng nói điều nhẹ hơn và đúng hơn:
 - Điều kiện hiện banner: **"công ty này đang có sản phẩm còn hiệu lực phủ placement của dải Premium"** — theo placement, không theo tên gói.
 - "Search tags" vẫn nằm trong checklist Ready-to-publish, **không gắn sao**, vì không nhìn thấy nghĩa là chưa điền.
 
-## 5. svn-be
+## 4. svn-be
 
 ```
 CREATE TABLE company_search_tag (
@@ -97,13 +73,13 @@ CREATE INDEX idx_company_search_tag_company ON company_search_tag (company_id);
 - **Server từ chối ghi tag đang Required vào bảng này** → `400`. Nó không thuộc về đây.
 - Gỡ cờ Search tag của một chip (sub-task 1) đã xoá nó khỏi mọi công ty trong cùng transaction — hành vi đó giữ nguyên.
 
-## 6. Acceptance
+## 5. Acceptance
 
 - [ ] Mục 3b chỉ liệt kê chip đã gắn cờ Search tag; chip chưa gắn không xuất hiện trong dialog.
 - [ ] Chọn tới 12 tag được; tag thứ 13 bị chặn ở UI **và** `PUT` 13 dòng bị server trả `400`.
-- [ ] Tag Required hiện đầu 3b, đã tick, làm mờ, có huy hiệu **Bắt buộc**, không bỏ tick được.
-- [ ] Tag Required **không** tính vào 12 — chọn đủ 12 tag khác vẫn lưu được.
-- [ ] Sau khi lưu, `company_search_tag` **không chứa** id của tag Required.
+- [ ] Tag Required **không xuất hiện** trong picker của 3b, kể cả dạng tick sẵn làm mờ.
+- [ ] Dòng chú thích về tag bắt buộc hiện dưới mục 3b.
+- [ ] Sau khi lưu, `company_search_tag` **không chứa** id của bất kỳ tag Required nào.
 - [ ] `PUT` kèm id tag Required → `400`.
 - [ ] `PUT` kèm id chưa gắn cờ Search tag → `400`.
 - [ ] Thêm / bớt ở 3b **không làm đổi** 3a, và ngược lại.
@@ -111,26 +87,9 @@ CREATE INDEX idx_company_search_tag_company ON company_search_tag (company_id);
 - [ ] Công ty không có sản phẩm phủ placement → không hiện banner.
 - [ ] Dải chip trên trang công ty công khai không đổi.
 
-### Tag Default
+## 6. Không làm trong sub-task này
 
-- [ ] HQ gắn Default cho 5 tag → tạo công ty mới → công ty đó có **đúng 5 dòng** trong `company_search_tag`, đúng 5 tag đó.
-- [ ] Sales gỡ 2 trong 5 tag đó → lưu được, còn 3 dòng.
-- [ ] HQ **đổi** danh sách Default sau đó → công ty vừa tạo ở trên **không đổi một dòng nào**.
-- [ ] HQ gắn Default cho 15 tag → tạo công ty mới → chỉ **12 dòng đầu theo thứ tự catalogue** được chép.
-- [ ] Không dòng Default nào trùng id với tag Required.
-- [ ] Không gắn Default cho tag nào → tạo công ty mới → `company_search_tag` rỗng, **vẫn lưu được**, banner cảnh báo hiện bình thường.
-
-### Bước chép cho công ty cũ
-
-- [ ] Chế độ đếm in ra đúng số công ty có `company_search_tag` rỗng và số dòng sẽ ghi, **không ghi gì vào DB**.
-- [ ] Chạy thật: công ty rỗng nhận đủ các tag Default; công ty **đã có tag** không đổi một dòng nào.
-- [ ] Công ty rỗng mà danh sách Default có 15 dòng → chỉ nhận **12 dòng đầu**.
-- [ ] Chạy lại lần hai ngay sau đó → **không ghi thêm dòng nào** (các công ty đó giờ đã có tag).
-- [ ] Chạy khi **chưa có dòng Default nào** → in ra 0 dòng sẽ ghi và **dừng**, không báo thành công giả.
-- [ ] Xoá được đúng các dòng vừa chép nếu kết quả sai.
-
-## 7. Không làm trong sub-task này
-
-- ❌ Cột Search tag / Required / Default trong Master data — sub-task 1 và 2.
+- ❌ Cột Search tag / Required trong Master data — sub-task 1 và 2.
+- ❌ Cờ Default và bước chép cho công ty cũ — **đã xoá khỏi scope**, đừng cài từ bản 20/11.
 - ❌ Vòng quay, con trỏ, response `premiumBand` — sub-task 4.
 - ❌ Giao diện hàng tag trên svn-web — sub-task 5.
