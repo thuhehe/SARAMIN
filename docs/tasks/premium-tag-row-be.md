@@ -52,8 +52,9 @@ Luật chia bài cũ tối ưu cho **sự khác nhau giữa các tag** — khôn
 | **2** | **Tag required — MỘT HOẶC NHIỀU.** HQ tick cờ Required cho một hoặc nhiều dòng catalogue (trong số các dòng đã bật Search tag). **Mọi tin đăng đều mang các tag đó** — tin đang mở và tin tạo về sau — nên mỗi tag Required phủ **toàn bộ** dải. Gắn lúc **dựng dải**, **không lưu xuống tin, không lưu xuống công ty**. Chúng chiếm các ô đầu của hàng tag theo thứ tự catalogue, và cái đầu tiên là tag được chọn sẵn. **Không bao giờ là 0** — hệ thống từ chối gỡ dòng Required cuối cùng. |
 | **2b** | **Mỗi tag Required thêm vào là một chip không lọc được gì**, vì nó phủ cả dải. Chúng chiếm ô đầu nên dải nhỏ bị lấn: dải 12 tin chỉ có 4 chip, 3 tag Required thì còn đúng 1 ô cho tag lọc thật. Nếu các tag Required chiếm hết số ô thì dải chỉ hiện chúng, không có gì xoay vòng. Không cần code chặn — chỉ cần **đừng giả định `tags[0]` là tag Required duy nhất**. |
 | **3** | **Tag khác ứng cử** = hợp `company_search_tag` của mọi công ty có tin trong dải. **Loại tag lọc ra dưới 3 tin.** Không có luật trần. |
-| **4** | **Số tag hiện** = `số tin trong dải ÷ 3` (làm tròn xuống), **tối đa 10, tối thiểu 3**. Dưới 3 → `tags: []`, FE ẩn cả hàng tag. |
-| **5** | **Thứ tự tag**: các tag Required chiếm các ô đầu, theo thứ tự catalogue. Các slot còn lại **xoay vòng** — con trỏ trên danh sách tag ứng cử nhích `số tag hiện − 1` mỗi lượt tải. **Không ngẫu nhiên ở bất kỳ đâu.** |
+| **4** | **Số tag hiện** = `số tin trong dải ÷ 3` (làm tròn xuống), **tối đa 10**. **Ẩn cả hàng tag (`tags: []`) khi MỘT TRONG HAI xảy ra** — viết rõ 23/11 sau câu hỏi của svn-be, vì hai vế bắt hai nguyên nhân khác nhau: `⌊số tin ÷ 3⌋ < 3` (dải quá ít tin), **hoặc** tổng số tag ứng cử — tính cả tag Required — dưới 3 (không có gì để lọc). |
+| **4b** | **Số ô là TRẦN, không phải hạn ngạch.** Tính ra 8 ô mà chỉ có 4 tag ứng cử → hiện Required + 4 tag đó, **không ẩn hàng** và không bịa thêm gì cho đủ ô. Chỉ luật 4 mới ẩn hàng tag. |
+| **5** | **Thứ tự tag**: các tag Required chiếm các ô đầu, theo thứ tự catalogue. Danh sách tag ứng cử xếp theo **thứ tự catalogue** (nhóm, rồi vị trí trong nhóm) trước khi xoay, để luôn tái hiện được. Các slot còn lại **xoay vòng** — con trỏ trên danh sách tag ứng cử nhích `số tag hiện − 1` mỗi lượt tải. **Không ngẫu nhiên ở bất kỳ đâu.** |
 | **6** | **Luôn đúng một tag được chọn**, là tag required khi vào trang. Không có nút "Tất cả". |
 | **7** | **Mỗi tag một vòng riêng**: các tin tag đó phủ, xếp sao cho **mỗi công ty rải đều khắp vòng** — công ty có 12/33 tin thì cứ ~3 ô một tin, công ty 3 tin thì cứ ~11 ô một tin. **KHÔNG dùng round-robin** (luật cũ): nó vét hết công ty nhỏ trước rồi để công ty lớn chiếm cả đuôi vòng. |
 | **7b** | **Sửa vòng**: chỗ nào **3 ô liền nhau cùng công ty** thì nhấc tin ở giữa ra, cắm vào chỗ ít đụng nhất. Lặp tới khi hết hoặc không cải thiện được nữa. |
@@ -70,7 +71,7 @@ Luật chia bài cũ tối ưu cho **sự khác nhau giữa các tag** — khôn
 Con trỏ cần một bộ đếm. **Không dùng `Random`, không dùng timestamp thô.**
 
 - Nhận thêm query param `bandSeq` (số nguyên, mặc định 0) do FE gửi, hoặc suy từ một counter theo session. Chốt cách nào tuỳ BE, miễn thoả: **cùng một request + cùng `bandSeq` → cùng một dải** (để bug report tái hiện được), và **người dùng F5 thì `bandSeq` tăng**.
-- Khoá con trỏ theo **hash của danh sách id đã sắp xếp của dải**, không phải một counter toàn cục — hai từ khoá khác nhau là hai dải khác nhau, không được dùng chung con trỏ.
+- **BỎ 23/11** theo đề xuất của svn-be: không cần khoá con trỏ theo hash danh sách id nữa. Khi `bandSeq` do FE gửi thì mỗi tag đã có vòng riêng và con trỏ chỉ là hàm của `bandSeq`; hai từ khoá khác nhau đã cho ra hai vòng khác nhau rồi.
 
 ## 4. Trả lời 7 câu hỏi của Long (comment 16/11)
 
