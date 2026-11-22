@@ -35,8 +35,15 @@ Không còn unique index — **nhiều dòng được phép TRUE**.
 - `GET /admin/master-data/company-highlights` trả thêm `required: boolean`.
 - `PATCH .../{id}` nhận `required`.
 - **Chỉ dòng đã có `search_tag = true` mới được tick Required** → vi phạm trả `400`.
-- **Không bao giờ được còn 0 dòng Required.** Gỡ dòng Required cuối cùng → `400`. Gỡ `search_tag` của dòng Required cuối cùng → cũng `400`. Đây là trạng thái duy nhất khiến một tin có thể không thuộc tag nào.
-- Gỡ `search_tag` của một dòng Required **không phải cuối cùng** → cho phép, và `required` tự về `false` trong cùng transaction.
+- **Ràng buộc bất biến — siết hơn "không được 0 dòng"** (sửa 23/11 sau câu hỏi của svn-be):
+
+  > **Luôn phải còn ít nhất MỘT dòng vừa `search_tag = true`, vừa `required = true`, vừa `active = true`.**
+
+  Lý do phải có `active`: tag bị tắt active thì không render được, nên hệ thống có đúng 1 dòng Required đang inactive *vẫn thoả* ràng buộc "≥1 dòng Required" mà dải thì không có tag nào để mở.
+
+  Ba thao tác sau, **nếu nhắm vào dòng hợp lệ cuối cùng** → `400`: `DELETE` dòng đó · `PATCH searchTag: false` · `PATCH active: false`. Còn dòng hợp lệ khác thì **cả ba đều cho phép**, và khi gỡ `search_tag` thì `required` tự về `false` trong cùng transaction.
+
+- **Đếm trong cùng transaction với lệnh ghi.** Có nhiều dòng Required thì sinh ra một race ngược: 2 dòng đang Required, 2 admin cùng lúc mỗi người bỏ tick một dòng, cả hai cùng đọc "còn 2, bỏ 1 vẫn còn 1", cả hai cùng qua → **kết quả 0 dòng**. Phải `SELECT … FOR UPDATE` tập dòng Required rồi đếm trong cùng transaction, không đọc trước ghi sau. Bên thua nhận `409` kèm "vừa có người đổi, tải lại trang".
 - Migration bật sẵn Required cho `featured-jobs` (xem mục 3) — để hệ thống không bao giờ ở trạng thái 0 dòng.
 
 ### ⛔ KHÔNG ghi tag Required vào từng tin đăng
@@ -58,7 +65,7 @@ Màn: **System → Master data → tab Company highlights**, cùng chỗ cờ Se
 |---|---|---|
 | **Cột Required** | ngay sau cột **Search tag** | một `Checkbox` mỗi dòng (**không phải Radio** — chọn được nhiều). Dòng chưa bật Search tag: **disabled**, tooltip nêu lý do. |
 | **Bộ đếm Required** | thanh công cụ, cạnh bộ đếm Search tag | `Bắt buộc: N tag`. N cũng chính là số chip **không lọc được gì** trên dải — xem mục 4. |
-| **Chặn về 0** | khi bỏ tick dòng cuối cùng | không cho bỏ tick, kèm một dòng giải thích: *phải còn ít nhất 1 tag bắt buộc, nếu không sẽ có tin không thuộc tag nào và không bao giờ hiện trên dải.* |
+| **Chặn về 0** | khi thao tác nhắm vào dòng hợp lệ cuối cùng | không cho bỏ tick Required, không cho tắt Switch Search tag, không cho tắt `active`. Kèm một dòng giải thích: *phải còn ít nhất 1 tag bắt buộc đang bật, nếu không sẽ có tin không thuộc tag nào và không bao giờ hiện trên dải.* Switch Search tag chỉ disable **có điều kiện** — các dòng Required khác vẫn gỡ được bình thường. |
 | **Huy hiệu Required** | chip trong mục "Search tag đang dùng" | thêm nhãn **Bắt buộc**. Dòng Required cuối cùng **bỏ nút ×**. |
 
 > Dùng lại đường đã có của sub-task 1: thêm cờ `hasRequired: true` vào domain `companyHighlights` trong `master-data-domains.ts`, để `use-domain-columns.tsx` render theo cờ — **không viết nhánh `if (domain === 'companyHighlights')`**.
@@ -84,8 +91,12 @@ Mỗi tag Required phủ **toàn bộ** dải, nên nó cũng là **một chip k
 - [ ] Sau migration: **ít nhất một** dòng có `required = true`, trong đó có `featured-jobs`, và dòng đó cũng có `search_tag = true`.
 - [ ] Tick Required cho **3 dòng cùng lúc** → đều thành công, không dòng nào bị bỏ tick tự động.
 - [ ] `PATCH required: true` lên dòng chưa bật Search tag → `400`.
-- [ ] Còn đúng 1 dòng Required, bỏ tick nó → `400`, UI nêu rõ lý do.
-- [ ] Còn đúng 1 dòng Required, `PATCH searchTag: false` lên nó → `400`.
+- [ ] Còn đúng 1 dòng Required active, bỏ tick Required nó → `400`, UI nêu rõ lý do.
+- [ ] Còn đúng 1 dòng Required active, `PATCH searchTag: false` lên nó → `400`.
+- [ ] Còn đúng 1 dòng Required active, `PATCH active: false` lên nó → `400`.
+- [ ] Còn đúng 1 dòng Required active, `DELETE` nó → `400`.
+- [ ] Có 3 dòng Required active, `PATCH active: false` lên một dòng → **thành công**, còn 2.
+- [ ] **Race:** 2 dòng Required, hai request bỏ tick hai dòng khác nhau gửi đồng thời → đúng một request thành công, request kia nhận `409`; kết quả cuối **vẫn còn ≥ 1 dòng**.
 - [ ] Có 3 dòng Required, `PATCH searchTag: false` lên một dòng → **thành công**, `required` của dòng đó tự về `false`, còn 2 dòng.
 - [ ] Thử ghi thẳng vào DB cho `required = true` ở 5 dòng → **được phép** (không có unique index).
 - [ ] Xoá hết `required` thẳng trong DB rồi gọi API dựng dải → hệ thống **không crash**; có log cảnh báo rõ ràng.
