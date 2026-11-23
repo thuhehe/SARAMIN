@@ -35,7 +35,8 @@ TOÀN BỘ TIN TRONG HỆ THỐNG
         │                  thứ tự sau bước này = HẠNG THEO GÓI
    [B] XẾP THEO TƯƠNG TÁC  B1 điểm thô → B2 xếp hạng, xử lý bằng điểm
         │                  thứ tự sau bước này = HẠNG THEO TƯƠNG TÁC
-   [C] TRỘN                vị trí = 0,9 × hạng theo gói + 0,1 × hạng theo tương tác
+   [C] TRỘN                C1 vị trí = 0,9 × hạng theo gói + 0,1 × hạng theo tương tác
+        │                  C2 giãn công ty: tin cùng công ty không đứng cạnh nhau
         │
    [D] MŨI TÊN & LƯU LẠI   so với hôm qua → lưu bảng → xử lý lỗi
 ```
@@ -131,7 +132,9 @@ vị trí = ((1 − w) × hạng theo gói) + (w × hạng theo tương tác)
 
 `w` là **trọng số tương tác**, một số từ 0 đến 1 do admin đặt, **mặc định 0,1**. Trọng số gói là phần còn lại, hệ thống tự suy ra.
 
-Sắp **tăng dần**, số nhỏ hơn đứng trước. Bằng nhau thì hạng theo gói nhỏ hơn đứng trước. **Không có bước xáo trộn nào sau đây.**
+Sắp **tăng dần**, số nhỏ hơn đứng trước. Bằng nhau thì hạng theo gói nhỏ hơn đứng trước.
+
+Sau khi có thứ tự này còn **một bước cuối: giãn công ty** — xem mục 3.3. Bước đó chỉ đẩy tin cùng công ty ra khỏi hai dòng liền nhau, không xáo trộn gì thêm.
 
 **VÍ DỤ 3/3 — trộn hai hạng lại.** Hai cột hạng dưới đây **đọc thẳng từ ví dụ 1 và ví dụ 2**, không phải số chọn đại:
 
@@ -148,7 +151,9 @@ Sắp **tăng dần**, số nhỏ hơn đứng trước. Bằng nhau thì hạng
 
 **Admin nhập một số, không phải hai.** Hai ô riêng có thể bị đặt thành tổng khác 1 và không chỗ nào trên màn hình báo điều đó.
 
-**`w = 0` là công tắc tắt.** Đặt về 0 thì bảng quay lại đúng thứ tự như production hiện nay — không cần phát hành lại. Đây là đường lui nếu quy tắc mới có vấn đề sau khi lên.
+**`w = 0` tắt phần tương tác — KHÔNG phải nút hoàn tác cả ticket.** Đặt về 0 thì vị trí quay về đúng thứ tự của bước A, đổi một ô, không cần phát hành lại.
+
+Nhưng bảng vẫn **không** giống production hiện nay, vì ticket này còn bỏ lọc placement (3.1), nhấc tin Gợi ý ra (A5) và đổi cách giãn công ty (3.3). Ba thứ đó không có công tắc; muốn gỡ phải phát hành lại.
 
 ### D — Mũi tên và lưu lại
 
@@ -214,14 +219,30 @@ Tác vụ lỗi ở bất kỳ bước nào → **giữ nguyên bảng hôm trư
 | **Build** | Áp sau khi đã có danh sách, trong `TopCompaniesOrder.arrange` |
 | **Cần làm** | Áp ngay ở bước A3, trước khi cắt lấy 101 tin, kèm bước bù A4 |
 
-### 3.3 BỎ quy tắc không để 2 tin liền kề cùng công ty
+### 3.3 GIỮ quy tắc giãn công ty, và thêm điều kiện nới luật
+
+> **ĐỔI QUYẾT ĐỊNH 23/11/2026.** Phần này trước đây ghi *gỡ hẳn phần giãn công ty*. Khách chốt lại: HOT 100 áp **đúng luật 10% như các section trên ba trang Jobs**, đủ cả ba vế. Mọi chỗ khác trong tài liệu nói hai tin cùng công ty được đứng liền kề đều đã sửa theo.
 
 | | |
 |---|---|
-| **Build** | `TopCompaniesOrder.arrange` xáo trộn thứ tự để hai tin liền kề không cùng công ty |
-| **Cần làm** | **Gỡ hẳn phần giãn công ty.** Giữ lại phần đếm giới hạn 10 tin và chuyển lên A3 |
+| **Build** | `TopCompaniesOrder.arrange` có cả hai phần: đếm giới hạn, và xáo trộn để hai tin liền kề không cùng công ty |
+| **Cần làm** | Giữ cả hai phần. Phần đếm chuyển lên A3 theo mục 3.2; phần giãn chạy ở cuối bước C, trên bảng đã xếp theo điểm |
 
-Hệ quả: một công ty có thể chiếm nhiều vị trí liền kề, tối đa 10 trong 100. **Đây là kết quả đúng, không phải lỗi.**
+**Luật 10% — ba vế, áp đủ:**
+
+| Vế | Nội dung |
+|---|---|
+| **1 — Trần** | Trong số tin cùng hiện một lúc, mỗi công ty nhiều nhất **10%**, thấp nhất **1 tin**. Bảng 100 dòng nên trần là **10 tin** |
+| **2 — Giãn** | Tin của cùng một công ty **không đứng cạnh nhau** |
+| **3 — Nới** | Không đủ công ty khác để xen vào thì **bỏ luật, hiện hết**. Không bỏ tin nào ra và không để bảng thiếu dòng |
+
+> **Vế 2 làm vị trí lệch khỏi thứ tự điểm — đây là cái giá, không phải lỗi.** Bước C cho ra một thứ tự chính xác theo điểm. Hai tin cùng công ty rơi vào hai dòng liền nhau thì phải đẩy một tin đi, nên vị trí hiển thị không còn trùng khít với thứ tự điểm.
+
+> **Cách làm: đẩy xuống, KHÔNG xáo ngẫu nhiên.** Duyệt bảng từ trên xuống theo thứ tự điểm. Tin nào rơi ngay dưới một tin cùng công ty thì đổi chỗ với tin hợp lệ gần nhất phía dưới. Giữ nguyên thứ tự điểm ở mọi chỗ không vi phạm. Build đang xáo ngẫu nhiên — **cách đó không dùng được ở đây**: bảng này có số thứ tự và mũi tên, nên chạy lại trên cùng dữ liệu phải ra **đúng cùng một bảng**.
+
+> **Mũi tên tính trên vị trí SAU khi giãn**, tức vị trí người đọc nhìn thấy, không phải thứ tự điểm trước khi giãn. Nếu không thì mũi tên nói về một bảng không ai thấy.
+
+> **Vế 3 là lý do không được dựng luật này thành điều kiện cứng.** Bảng phải luôn đủ dòng. Khi hàng chỉ còn một hai công ty thì giãn tới đâu hay tới đó, rồi hiện hết phần còn lại theo thứ tự điểm.
 
 ### 3.4 Đổi khoá sắp xếp vị trí
 
@@ -481,7 +502,10 @@ Hệ quả nếu **không gói nào khai nhịp**:
 - [ ] Công thức dùng **vị trí 1…100**, không dùng `product.display_order`. Kiểm bằng cách: đặt `w = 1` (thuần tương tác) thì bảng phải xếp đúng theo thứ hạng tương tác — nếu vẫn gần giống thứ tự theo gói thì đã nhét nhầm số
 - [ ] Không hai tin nào có cùng hạng theo gói — thứ tự ở bước A luôn là duy nhất
 - [ ] Khi cả 100 tin cùng hạng tương tác, thứ tự hiển thị trùng khớp hoàn toàn với hạng theo gói
-- [ ] Hai tin cùng công ty được phép đứng liền kề
+- [ ] Hai tin cùng công ty **không đứng cạnh nhau**, khi hàng còn đủ công ty khác để xen vào
+- [ ] Khi gần như chỉ còn một công ty, bảng **hiện hết** và chấp nhận hai tin cùng công ty đứng cạnh nhau — không bỏ tin nào và không để thiếu dòng
+- [ ] Chạy lại tác vụ trên cùng dữ liệu cho ra **đúng cùng một bảng** — phần giãn không được dùng ngẫu nhiên
+- [ ] Mũi tên tính trên vị trí sau khi giãn, không phải thứ tự điểm trước khi giãn
 - [ ] Tin đăng hôm nay nằm ở nửa trên của bảng, không rơi xuống đáy
 - [ ] Trọng số `w` đổi được qua cấu hình, không cần phát hành lại
 
@@ -516,7 +540,7 @@ Hệ quả nếu **không gói nào khai nhịp**:
 **Cấu hình admin**
 - [ ] 6 ô cấu hình đổi được, không cần phát hành lại
 - [ ] Đổi số có hiệu lực từ lần chạy 0h kế tiếp, và màn hình ghi rõ điều đó
-- [ ] Đặt `w = 0` thì bảng ra đúng thứ tự như production hiện nay
+- [ ] Đặt `w = 0` thì bảng ra đúng thứ tự của bước A — bậc gói, rồi thời điểm làm mới, đã áp giới hạn 10 tin/công ty. Tin Gợi ý vẫn được nhấc ra như thường, vì A5 không đọc `w`; phần giãn công ty vẫn chạy, vì vế 2 không đọc `w`
 - [ ] Biên độ khớp bảng ở phần 3.11: đặt `w = 0,2` thì tin dịch tối đa ~25 bậc, không phải ~20
 
 **Kiểm thử dữ liệu quá khứ**
@@ -548,7 +572,7 @@ Hệ quả nếu **không gói nào khai nhịp**:
 
 ## 8. Câu hỏi cần BA trả lời trước khi bắt tay
 
-**Đã chốt, không cần hỏi lại:** trọng số và điểm số chuyển thành ô cấu hình trong admin (không có "lộ trình" nào cả) · bộ 1 / 3 / 5 giữ làm mặc định · luật "new chỉ hiện một lần" CÓ áp · giữ nguyên 4 nhóm lọc đang chạy · nhãn Gợi ý gắn theo tương tác chứ không theo gói · **danh sách đã lọc giữ nguyên cách xếp hiện nay** (bậc gói rồi auto-refresh, không dùng điểm, mũi tên "–" toàn bộ) · **HOT100 KHÔNG phải trang chỉ dành cho tin trả phí** — bỏ lọc placement, làm theo requirement (phần 3.1) · **bước A gom 101 tin**, tin Gợi ý được nhấc ra nên bảng đánh số vẫn đủ 100 · **đúng 1 dòng Gợi ý** · **nút lọc kinh nghiệm KHÔNG có trạng thái "tất cả"** · **câu hỏi SEO khách giao lại cho bên mình quyết** (phần 3.12) · **câu chữ mới cho chú thích dấu "?"** đã có, nằm ở phần 3.8 · **giữ hai bước và giữ `w = 0,1`** — chấm điểm một lượt trên toàn bộ tin, và `w = 1`, đều đã cân nhắc và bác ngày 20/11.
+**Đã chốt, không cần hỏi lại:** trọng số và điểm số chuyển thành ô cấu hình trong admin (không có "lộ trình" nào cả) · bộ 1 / 3 / 5 giữ làm mặc định · luật "new chỉ hiện một lần" CÓ áp · giữ nguyên 4 nhóm lọc đang chạy · nhãn Gợi ý gắn theo tương tác chứ không theo gói · **danh sách đã lọc giữ nguyên cách xếp hiện nay** (bậc gói rồi auto-refresh, không dùng điểm, mũi tên "–" toàn bộ) · **HOT100 KHÔNG phải trang chỉ dành cho tin trả phí** — bỏ lọc placement, làm theo requirement (phần 3.1) · **bước A gom 101 tin**, tin Gợi ý được nhấc ra nên bảng đánh số vẫn đủ 100 · **đúng 1 dòng Gợi ý** · **nút lọc kinh nghiệm KHÔNG có trạng thái "tất cả"** · **câu hỏi SEO khách giao lại cho bên mình quyết** (phần 3.12) · **câu chữ mới cho chú thích dấu "?"** đã có, nằm ở phần 3.8 · **luật 10% ba vế** — trần 10%/thấp nhất 1 tin, không đứng cạnh nhau, thiếu công ty thì nới ra và hiện hết (chốt 23/11, thay cho quyết định bỏ giãn công ty) · **sửa tiêu chí nghiệm thu `w = 0`** theo đề xuất của dev, khách trả lời "ok" trên SRM-1708 ngày 20/11 · **giữ hai bước và giữ `w = 0,1`** — chấm điểm một lượt trên toàn bộ tin, và `w = 1`, đều đã cân nhắc và bác ngày 20/11.
 
 **Còn lại:**
 
@@ -566,7 +590,7 @@ Hệ quả nếu **không gói nào khai nhịp**:
 |---|---|
 | Khoá sắp xếp hiện tại | `PgFtsSearchAdapter.ORDER_TIER_THEN_REFRESHED` |
 | Lọc theo placement cần bỏ | `PgFtsSearchAdapter.BOARD_BAND_PREDICATE`, `JOB_LIST_TRENDING_PLACEMENT_ID` |
-| Giới hạn + giãn công ty | `TopCompaniesOrder.arrange` |
+| Giới hạn + giãn công ty | `TopCompaniesOrder.arrange` — giữ cả hai phần, nhưng phần giãn phải đổi từ xáo ngẫu nhiên sang đẩy xuống theo thứ tự điểm (mục 3.3) |
 | Định nghĩa section | `JobBoardSection.TRENDING_LATEST` |
 | Thứ hạng hôm qua | `Hot100RankService`, `Hot100RankSnapshotJob`, V818 |
 | Dữ liệu theo ngày | `job_daily_snapshot` (V541), `scrap`, `job_application` |

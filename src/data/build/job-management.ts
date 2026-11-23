@@ -1135,7 +1135,7 @@ export const jobManagement: BuildModule = {
       site: 'Jobseekers',
       scope: ['BE', 'FE'],
       ready: true,
-      notes: 'Ranking rule rewritten 19/11/2026. Weights, points and window are admin configuration, not constants; w = 0 restores the current board. Build orders by tier then refresh only, and the movement column is empty on production. Ticket: docs/tasks/hot100-ranking.md',
+      notes: 'Ranking rule rewritten 19/11/2026. Weights, points and window are admin configuration, not constants; w = 0 collapses position back to the tier order, which is NOT the board production shows today. Build orders by tier then refresh only, and the movement column is empty on production. Ticket: docs/tasks/hot100-ranking.md',
       mockup: 'js-hot100',
       detail: {
         description:
@@ -1148,8 +1148,8 @@ export const jobManagement: BuildModule = {
             en: 'Posting tier picks the 100. Candidate interest orders them inside it.',
           },
           {
-            vi: 'Vị trí = (1 − w) × hạng theo gói + w × hạng theo tương tác. Admin nhập MỘT số w, mặc định 0,1. Đặt w = 0 là trang quay về đúng cách xếp hiện nay.',
-            en: 'Position = (1 − w) × tier rank + w × interest rank. An operator enters ONE number w, default 0.1. Setting w = 0 returns the board to exactly what it does today — the kill switch, with no release needed.',
+            vi: 'Vị trí = (1 − w) × hạng theo gói + w × hạng theo tương tác. Admin nhập MỘT số w, mặc định 0,1. Đặt w = 0 thì vị trí quay về thuần theo gói — tắt bằng một ô, không cần phát hành lại.',
+            en: 'Position = (1 − w) × tier rank + w × interest rank. An operator enters ONE number w, default 0.1. Setting w = 0 collapses position back to the tier order — one field, no release needed.',
           },
           {
             vi: 'Tính một lần mỗi đêm lúc 00:01 giờ VN, cố định cả ngày. Bảng đổi trong ngày thì mũi tên "so với hôm qua" thành vô nghĩa.',
@@ -1182,7 +1182,7 @@ export const jobManagement: BuildModule = {
               'THE ORDER AFTER A4 IS THE TIER RANK, and it is one of the two inputs to Stage C. A5 then lifts one posting out of that order and the remaining 100 are RENUMBERED 1..100, so the tier rank stage C works with runs 1 to 100 with no gap in it. Nothing is stored; it is recomputed every night.',
               'THE FILL-BACK IS NOT AN EDGE CASE. Six employers posting would yield 60 rows under the cap alone; without A4 the board is short every day until the market is wide.',
               'AUTO-REFRESH IS AUTOMATIC, NOT A BUTTON. A product carries a refresh policy (`product.refresh_policy`, a phase list of `everyDays`); a posting snapshots it at publish into `job.refresh_policy` and `next_refresh_at`, and the lifecycle sweep bumps `refreshed_at` when one falls due. No employer action is involved. So the second sort key is a property of the PACKAGE, not something a customer can trigger — which makes a package with a faster cadence genuinely worth more, and means that if NO product on production declares a cadence at all, this key never moves and candidate interest becomes the only thing that reorders the board. Which of the two is true on production has not been checked; the ticket carries it as a check.',
-              'THE 10-PER-COMPANY CAP IS APPLIED WHILE SELECTING, not while ordering. Applied afterwards it only pushes a company\'s surplus down the board it already filled, which is not the rule.',
+              'THE 10-PER-COMPANY CAP IS APPLIED WHILE SELECTING, not while ordering. Applied afterwards it only pushes a company\'s surplus down the board it already filled, which is not the rule. The cap is part 1 of the site-wide 10% rule — ten of a hundred rows — and parts 2 and 3 of that rule are applied at the END of stage C; see the spacing block below.',
               'THE TIER RANK IS A ROW NUMBER, NOT A CALCULATION. Sort every eligible posting by A2, apply A3, and the position a posting lands on IS its tier rank — first row 1, second row 2, on to 101. Nothing is added, multiplied or scaled.',
               'IT IS WORKED OUT ROW BY ROW in the block below, on the same four postings that stages B and C then use.',
               'NO TWO POSTINGS SHARE A TIER RANK. A2 ends on a creation-time tie-break precisely so the ordering is total. Tied ranks exist only on the interest side (stage B), which is why a value like 60.5 appears in that column and never in this one.',
@@ -1248,7 +1248,7 @@ export const jobManagement: BuildModule = {
           },
           {
             label: 'STAGE C — the blend, which is the displayed position',
-            text: 'WORKED EXAMPLE 3 of 3, and the rule itself. Position = ((1 − w) × tier rank) + (w × interest rank), with w defaulting to 0.1 — the arithmetic below is worked at that default. Sort ascending: the smaller number sits higher. Where two postings tie, the smaller tier rank wins. Nothing reorders the board after this step.\n\nBoth rank columns below are each posting’s POSITION in an ordering this job has already produced — the tier rank from stage A, the interest rank from stage B. Neither is a score anyone enters and neither is stored; both are recomputed every night. A fractional value like 60.5 is a TIED interest rank, the average of the span a tied group covers (stage B); the tier column never carries one, because stage A produces a total ordering. The four postings are the same P, Q, R, S the two blocks above worked out — every number in the two rank columns was read off those blocks, not chosen here.',
+            text: 'WORKED EXAMPLE 3 of 3, and the rule itself. Position = ((1 − w) × tier rank) + (w × interest rank), with w defaulting to 0.1 — the arithmetic below is worked at that default. Sort ascending: the smaller number sits higher. Where two postings tie, the smaller tier rank wins. ONE step still follows — the company spacing pass, in the block below.\n\nBoth rank columns below are each posting’s POSITION in an ordering this job has already produced — the tier rank from stage A, the interest rank from stage B. Neither is a score anyone enters and neither is stored; both are recomputed every night. A fractional value like 60.5 is a TIED interest rank, the average of the span a tied group covers (stage B); the tier column never carries one, because stage A produces a total ordering. The four postings are the same P, Q, R, S the two blocks above worked out — every number in the two rank columns was read off those blocks, not chosen here.',
             table: {
               cols: ['Posting', 'Tier rank', 'Interest rank', 'Blend', 'Shown at'],
               rows: [
@@ -1266,11 +1266,30 @@ export const jobManagement: BuildModule = {
               'MEMBERSHIP AND POSITION ARE TWO STEPS ON PURPOSE. A single scoring pass over the whole corpus — score every posting on tier and interest together, take the hundred best — was put forward on 20/11/2026 and rejected. The reason is that w HAS NO ABSOLUTE MEANING: the interest term spans w multiplied by the LENGTH OF THE LIST BEING RANKED. Over 100 rows, w = 0.1 buys about ten places. Over a corpus of 3,000 the same 0.1 buys about three hundred — and it drifts on its own, reaching a thousand places if the market grows to 9,000 postings with nobody touching the setting. To get a Saramin-KR amplitude in one pass, w would have to be about 0.003, a number no operator can reason about. Ranking over exactly 100 keeps w meaning one thing forever.',
               'THE PRICE OF THAT, stated rather than hidden: the posting at tier rank 101 is off the board however much candidates want it, and the one at 100 is on it however dead it is. Widening stage A to 300 and displaying the top hundred was offered as the middle ground on 20/11/2026 and declined, because it lets a paid posting be pushed off the board entirely by a cheaper one — which is the one thing sales cannot explain away.',
               'w = 1 WAS CONSIDERED AND REJECTED on 20/11/2026, on the reasoning that if stage A already gates on package then position could be pure interest. It does not follow, because STAGE A IS NOT A REAL GATE: free postings are eligible (decided 19/11), so in a thin market nearly everything reaches the board and the package buys nothing anyone can see. At w = 1 a free posting with thirty views outranks the top package in month one; the ten rows a signed-out reader sees lose any commercial claim; and the feedback loop has no tier anchor left to damp it, so the board can freeze around whatever happened to be popular first. The recommended row also loses its job, since nothing is buried any more. Pure interest and an open board are the pair that cannot both hold — one of the two has to give.',
-              'w = 0 IS THE KILL SWITCH. It collapses the blend back to the tier order, which is exactly what production does today. If the new rule misbehaves after launch the board is restored by editing one field, not by shipping a release.',
+              'w = 0 SWITCHES OFF THE INTEREST HALF — IT IS NOT AN UNDO FOR THIS TICKET. It collapses the blend back to the tier order, by editing one field rather than shipping a release. It does NOT restore today\'s board: the same work also drops the placement filter, lifts the recommended posting out and changes how company spacing is applied, and w reaches none of those. Undoing them is a release. Said plainly because the earlier wording promised a rollback and the team read it as one — the developer caught it on SRM-1708 and the client agreed the correction on 20/11/2026.',
               'NO FURTHER PASS. An earlier draft also spread employers apart so two neighbours never shared a company, and carried a minimum-score floor for the top 20. Both were dropped on 19/11/2026: position is the blend, full stop. A company may hold consecutive rows, at most 10 of them.',
               'A POSTING PUBLISHED TODAY NEEDS NO SPECIAL RULE. Its refresh timestamp is the newest there is, so it ranks high in Stage A; carrying the worst interest rank costs it about ten places. The cold-start problem solves itself, which is why no starting score is granted.',
             ],
             warn: 'TIER RANK IS A POSITION — 1, 2, 3 … 100 — and NEVER `product.display_order`. The ladder an operator sees in HQ Admin (Product settings ▸ Posting ladder) carries values like 300, 295, 291, 287, 280: those order the rungs against each other, they are not ranks. Put one into this formula and the tier term comes out tens of times too large, the interest term stops being able to move anything, and the board silently reproduces the exact order production serves today — no error, no warning, just the feature quietly not working. The same applies to the interest rank: it is the POSITION from stage B, not the raw score.',
+          },
+          {
+            label: 'THE COMPANY SPACING PASS — the last step, and the one that bends the score order',
+            text: 'DECIDED 23/11/2026, REPLACING AN EARLIER DECISION. This requirement previously removed company spacing from HOT 100 outright and said two postings from one company may sit together. The client settled it the other way: HOT 100 applies the SAME three-part 10% rule the sections on the three Jobs pages apply. Part 1 is the cap, already enforced in stage A. Parts 2 and 3 run here, after the blend has produced an exact order.',
+            table: {
+              cols: ['Part', 'Rule'],
+              rows: [
+                ['1 — the cap', 'Of the postings shown together, one company holds at most 10%, and never fewer than 1. A hundred rows means ten. Enforced in stage A while selecting'],
+                ['2 — the spacing', 'Two postings from one company never sit on adjacent rows'],
+                ['3 — the release', 'When there are not enough other companies to separate them, the rule is DROPPED and everything is shown. Never drop a posting, never leave the board short'],
+              ],
+            },
+            items: [
+              'PART 2 MOVES POSTINGS OFF THE POSITION THEIR SCORE EARNED, and that is the price of the rule rather than a defect. The blend produces an exact order; honouring the spacing means some posting has to give up the row it earned.',
+              'THE IMPLEMENTATION IS A PUSH-DOWN, NOT A SHUFFLE. Walk the blended order from the top; when a posting would land directly under one from the same company, swap it with the nearest eligible posting below it, and leave every non-offending position exactly as the blend set it. The build shuffles randomly today and THAT CANNOT BE REUSED HERE: this board carries numbered positions and a day-over-day arrow, so the same input has to produce the same board every time it runs. A random pass makes the arrow report movement the ranking never caused.',
+              'THE ARROW IS COMPUTED ON THE POST-SPACING POSITION — what the reader actually sees — not on the blended order before it. Otherwise the arrow describes a board nobody was shown.',
+              'PART 3 IS WHY THIS CANNOT BE A HARD CONSTRAINT. The board must always be full. When the queue thins to one or two employers, space what can be spaced and then show the rest in blend order; no posting is ever dropped to satisfy the rule.',
+              'THIS IS THE SAME RULE AS THE JOBS-PAGE SECTIONS, which matters for whoever sells and whoever tests: one sentence covers every placement, and a tester moving between the pages is not learning a new rule each time. What differs is only what the 10% is counted over — cards in a section there, rows on the board here.',
+            ],
           },
           {
             label: 'THE RECOMMENDED SLOT — one pinned row above position 1',
