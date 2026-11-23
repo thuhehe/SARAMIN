@@ -14,7 +14,7 @@
 
 Thêm **một hàng tag ngay dưới tiêu đề dải Premium** trên `/search`. Bấm một tag thì các card trong dải đổi sang nhóm tin khác. Danh sách kết quả bên dưới không đụng tới.
 
-Dải đã chạy (svn-be V486, FE `features/jobs/search/ui/premium-jobs-band.tsx`): chèn sau 3 dòng kết quả đầu, chỉ trang 1, 10 card xem 3 card một lượt.
+Dải đã chạy (svn-be **V488** `bundle_is_premium`, FE `features/jobs/search/ui/premium-jobs-band.tsx`): chèn sau 3 dòng kết quả đầu, chỉ trang 1, 10 card xem 3 card một lượt.
 
 Nguồn tag là **company tag** — catalogue `company_highlight`. Không dùng job card tag, không dùng trường của job: chỉ catalogue này mới có emoji, mà emoji trên mỗi tag là một phần của thiết kế.
 
