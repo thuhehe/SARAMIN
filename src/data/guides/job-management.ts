@@ -197,6 +197,26 @@ export const jobManagementGuide: ModuleGuide = {
       spec: 'job-list',
     },
     {
+      id: 'why-the-blue-band-changes',
+      title: 'Why the blue band shows different jobs each time',
+      where: 'The jobseeker site — the blue band on the search results page',
+      outcome: 'An answer for the customer who asks why their posting is not always the one on screen, and why one company never fills the whole row.',
+      steps: [
+        'The band holds up to **ten cards** but shows **three at a time**. The rest are one arrow press away.',
+        'Which three you land on **changes on every page load**. That is on purpose: every posting in the band takes its turn in those three, and after a predictable number of loads each one has had exactly one turn.',
+        'Nothing is hidden and nothing is shown twice. A posting that paid for the band is always in it — the rotation decides only **when** it is in front, never **whether**.',
+        'Postings from one company are **spread through the row** rather than sitting together, so the reader sees a market instead of one advertiser.',
+        'The chips above the cards are **company tags**. Clicking one swaps the cards underneath and nothing else — no new search, and no movement in the result list below.',
+      ],
+      tips: [
+        'For the customer who asks “why is my job not at the top”: in this band there is no top. A position is a turn, not a ranking — and unlike the result list, **freshness buys nothing here**. Every posting in the band is owed the same exposure, whatever day it was refreshed.',
+        'If one company genuinely owns nearly every posting in the band, the band will show its cards next to each other. That is the shape of the data, not a display fault — forcing variety there would mean showing somebody’s paid posting less often than a competitor’s.',
+        'The band is hidden entirely when fewer than three postings qualify. A half-empty row is never shown.',
+        'NOT LIVE YET — the band itself exists, but this rotation is still being built. Until it ships the band orders by freshness, so what you see today will not match this page.',
+      ],
+      spec: 'job-list',
+    },
+    {
       id: 'why-is-a-job-not-showing',
       title: 'Work out why a job is not showing',
       where: 'Jobs → the posting, then the company',
