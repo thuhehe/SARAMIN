@@ -197,10 +197,10 @@ function bandOffset(tagId: string, n: number): number {
 const bandJobsFor = (tagId: string) =>
   BAND_JOBS.filter((j) => tagId === BAND_REQUIRED || BAND_CO_TAGS[j.co]?.includes(tagId))
 
-/* Rule 7 — each company spread evenly over the WHOLE ring. Plain round-robin is
-   wrong here: it exhausts the small employers first and leaves the biggest one
-   filling the tail. Rule 7b then lifts the middle job out of any place where three
-   neighbours share a company and re-inserts it where it clashes least. */
+/* The one ordering rule, written once in the spec as EVEN SPREAD BY COMPANY and
+   reused by every placement: a company holding n of N postings puts its k-th at
+   (k + 0.5) * N / n, and everything sorts by that. No loop, no special case —
+   when one company owns nearly everything the spread just shows everything. */
 function bandRing(jobs: BandJob[]): BandJob[] {
   const cos = [...new Set(jobs.map((j) => j.co))]
   const slots = cos.flatMap((co, ci) => {
@@ -208,32 +208,7 @@ function bandRing(jobs: BandJob[]): BandJob[] {
     return g.map((j, k) => ({ j, ci, pos: ((k + 0.5) * jobs.length) / g.length }))
   })
   slots.sort((a, b) => a.pos - b.pos || a.ci - b.ci)
-  let ring = slots.map((s) => s.j)
-  const clash = (a: BandJob[], i: number) =>
-    a[i].co === a[(i + 1) % a.length].co && a[i].co === a[(i + 2) % a.length].co
-  const score = (a: BandJob[]) => a.reduce((n, _, i) => (clash(a, i) ? n + 1 : n), 0)
-  let best = score(ring)
-  for (let pass = 0; pass < 40 && best > 0; pass++) {
-    let moved = false
-    for (let i = 0; i < ring.length && !moved; i++) {
-      if (!clash(ring, i)) continue
-      const m = (i + 1) % ring.length
-      for (let k = 0; k < ring.length; k++) {
-        if (k === m) continue
-        const t = ring.slice()
-        const [x] = t.splice(m, 1)
-        t.splice(k, 0, x)
-        if (score(t) < best) {
-          ring = t
-          best = score(t)
-          moved = true
-          break
-        }
-      }
-    }
-    if (!moved) break
-  }
-  return ring
+  return slots.map((s) => s.j)
 }
 
 function BandArrow({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
