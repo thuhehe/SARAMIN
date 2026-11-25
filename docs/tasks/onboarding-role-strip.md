@@ -17,7 +17,7 @@ Bản 17/11 đã lên `dev`: dải chỉ lấy job **đúng vị trí** (bỏ nh
 |---|---|---|
 | Lấy job theo | **một** vị trí — vị trí có nhiều job đang mở nhất trong ≤3 vị trí đã chọn | **tất cả** vị trí đã chọn ở bước 1 (≤3) |
 | Nơi làm việc | **không lọc** | **lọc** theo các tỉnh/thành đã chọn ở bước 2 |
-| Tiêu đề | tên **một** vị trí | tên **tất cả** vị trí đã chọn, cách nhau bằng dấu phẩy |
+| Tiêu đề | tên **một** vị trí | tên **tất cả** vị trí đã chọn — dấu phẩy ở giữa, **và** trước tên cuối |
 
 **Vì sao lọc thêm nơi làm việc:** đúng vị trí mà sai tỉnh/thành thì ứng viên không ứng tuyển được — thẻ đó chiếm chỗ mà không dùng được. Ứng viên vừa khai nơi muốn làm ở ngay bước trước đó; không dùng câu trả lời ấy thì hỏi làm gì.
 
@@ -69,10 +69,11 @@ Hôm nay `pickStripRoleAction` đếm job của từng vị trí rồi lấy v�
 
 ## T3 · Tiêu đề in **tất cả** vị trí đã chọn
 
-> **"Việc làm cho Hành chính marketing, Nhân viên kinh doanh, Content marketing"** — đúng thứ tự ứng viên chọn, cách nhau bằng dấu phẩy.
+> **"Việc làm cho Hành chính marketing, Nhân viên kinh doanh và Content marketing"** — đúng thứ tự ứng viên chọn, dấu phẩy ở giữa, **và** trước tên cuối.
 
 **Checklist**
-- [ ] `roleLabel` đổi từ tên một vị trí thành danh sách tên, nối bằng `", "` theo đúng thứ tự đã chọn
+- [ ] `roleLabel` đổi từ tên một vị trí thành danh sách tên theo đúng thứ tự đã chọn, nối bằng `", "` và **từ nối trước tên cuối**: 3 vị trí → `A, B và C`; 2 vị trí → `A và B` (không có dấu phẩy); 1 vị trí → `A`
+- [ ] Từ nối lấy theo ngôn ngữ của trang: tiếng Việt **và**, tiếng Anh **and** — nằm trong file copy, không hard-code
 - [ ] `copy.roleSectionTitle` (`{role}`) nhận chuỗi dài hơn trước — kiểm tiêu đề **xuống dòng** gọn gàng ở mobile, không cắt chữ, không tràn
 - [ ] Không chọn lại, không rút gọn danh sách: chọn 3 vị trí thì in đủ 3 tên, kể cả khi một vị trí không có job nào lọt vào dải
 
@@ -104,6 +105,7 @@ Hôm nay `pickStripRoleAction` đếm job của từng vị trí rồi lấy v�
 | 9 | Bước 1 không chọn vị trí nào | Không có khối 2; khối 1 vẫn render |
 | 10 | Tin không ghi tỉnh nào | Không vào dải (xem ghi chú ở T2) |
 | 11 | Tiêu đề 3 vị trí tên dài, màn mobile | Xuống dòng gọn, không cắt chữ, không tràn ngang |
+| 11b | Chọn 2 vị trí · chọn 1 vị trí | `A và B` (không dấu phẩy) · `A`. Bản tiếng Anh dùng **and** |
 | 12 | `/jobs/search` lỗi | Ẩn khối 2, màn kết quả vẫn lên bình thường |
 | 13 | Con số ở bước 3 / 4 của wizard | **Không đổi** — vẫn đếm theo ngành nghề (SRM-1347) |
 
